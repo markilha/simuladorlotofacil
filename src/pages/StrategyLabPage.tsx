@@ -9,14 +9,17 @@ import {
   type ConcursoExcel,
 } from "../utils/resultadosExcel";
 import {
+  analisarCicloDasDezenas,
   calcularMetricasJogo,
   calcularProbabilidadeCondicional,
   criarDesdobramentoInteligente,
   criarEstrategiaComFixas,
   criarFechamentoGarantido,
+  criarEstrategiaFechamentoDoCiclo,
   estrategiaNumerosFrequentesEAtrasados,
   gerarJogosBalanceados,
   type CondProbabilities,
+  type CycleProgressInfo,
   type GuaranteeLevel,
   type RangeConstraint,
   type StatisticalFilterOptions,
@@ -28,7 +31,8 @@ type StrategyMode =
   | "fechamento"
   | "desdobramento"
   | "balanceado"
-  | "frequencia";
+  | "frequencia"
+  | "ciclo";
 
 const criarIntervalosPadrao = () =>
   Array.from({ length: 5 }, () => ({} as RangeConstraint));
@@ -47,6 +51,9 @@ const parseNumero = (value: string): number | undefined => {
 
 const formatarLista = (numeros: Dezena[]) =>
   numeros.map((n) => n.toString().padStart(2, "0")).join(", ");
+
+const formatarOuHifen = (lista?: Dezena[]) =>
+  lista && lista.length ? formatarLista(lista) : "Nenhuma";
 
 export function StrategyLabPage() {
   const [strategyMode, setStrategyMode] = useState<StrategyMode>("fixas");
@@ -115,6 +122,15 @@ export function StrategyLabPage() {
   useEffect(() => {
     if (historico.length) {
       setProbabilidades(calcularProbabilidadeCondicional(historico));
+    }
+  }, [historico]);
+
+  const cicloResumo = useMemo<CycleProgressInfo | null>(() => {
+    if (!historico.length) return null;
+    try {
+      return analisarCicloDasDezenas(historico);
+    } catch {
+      return null;
     }
   }, [historico]);
 
@@ -317,6 +333,19 @@ export function StrategyLabPage() {
             filtros: filtrosParaEnvio,
           });
           break;
+        case "ciclo":
+          if (!historico.length) {
+            throw new Error(
+              "Carregue a planilha oficial antes de usar o fechamento do ciclo."
+            );
+          }
+          resultado = criarEstrategiaFechamentoDoCiclo({
+            historico,
+            dezenasPorJogo,
+            quantidadeJogos,
+            filtros: filtrosParaEnvio,
+          });
+          break;
         default:
           throw new Error("Estratégia não suportada.");
       }
@@ -462,6 +491,7 @@ export function StrategyLabPage() {
             <option value="desdobramento">Desdobramento inteligente</option>
             <option value="balanceado">Jogos balanceados</option>
             <option value="frequencia">Frequentes × atrasados</option>
+            <option value="ciclo">Fechamento do ciclo das dezenas</option>
           </select>
         </label>
         <label className="flex flex-col text-sm font-semibold text-slate-200">
@@ -553,6 +583,97 @@ export function StrategyLabPage() {
           </label>
         )}
       </div>
+
+      {strategyMode === "ciclo" && (
+        <div className="space-y-3 rounded-2xl border border-emerald-800/60 bg-slate-900/70 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-emerald-300">
+                Fechamento do ciclo das dezenas
+              </p>
+              <p className="text-xs text-slate-400">
+                Priorize as dezenas faltantes e evite as recem encerradas.
+              </p>
+            </div>
+            {cicloResumo && (
+              <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+                {cicloResumo.dezenasFaltantes.length
+                  ? `${cicloResumo.dezenasFaltantes.length} faltando`
+                  : "Ciclo fechado"}
+              </span>
+            )}
+          </div>
+          {cicloResumo ? (
+            <>
+              <div className="grid gap-3 text-sm md:grid-cols-2">
+                <p>
+                  <span className="text-slate-400">Concursos no ciclo:</span>{" "}
+                  <span className="font-semibold text-white">
+                    {cicloResumo.concursosNoCiclo}
+                  </span>
+                </p>
+                <p>
+                  <span className="text-slate-400">Media historica:</span>{" "}
+                  <span className="font-semibold text-white">
+                    {cicloResumo.mediaHistorica
+                      ? `${cicloResumo.mediaHistorica.toFixed(1)} conc.`
+                      : "—"}
+                  </span>
+                </p>
+                <p>
+                  <span className="text-slate-400">Previsao estimada:</span>{" "}
+                  <span className="font-semibold text-white">
+                    {cicloResumo.estimativaConcursosRestantes !== undefined
+                      ? `~${cicloResumo.estimativaConcursosRestantes} conc.`
+                      : "—"}
+                  </span>
+                </p>
+                {cicloResumo.ultimoFechamento && (
+                  <p>
+                    <span className="text-slate-400">Ultimo fechamento:</span>{" "}
+                    <span className="font-semibold text-white">
+                      Concurso {cicloResumo.ultimoFechamento.concurso}{" "}
+                      {cicloResumo.ultimoFechamento.duracao
+                        ? `(${cicloResumo.ultimoFechamento.duracao} conc.)`
+                        : ""}
+                    </span>
+                  </p>
+                )}
+              </div>
+              <div className="grid gap-4 text-sm md:grid-cols-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase text-slate-400">
+                    Dezenas faltantes
+                  </p>
+                  <p className="mt-1 font-semibold text-white">
+                    {formatarOuHifen(cicloResumo.dezenasFaltantes)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase text-slate-400">
+                    Dezenas quentes
+                  </p>
+                  <p className="mt-1 text-slate-200">
+                    {formatarOuHifen(cicloResumo.dezenasQuentes)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase text-slate-400">
+                    Recem encerradas (evite)
+                  </p>
+                  <p className="mt-1 text-slate-200">
+                    {formatarOuHifen(cicloResumo.recemEncerradas)}
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-slate-300">
+              Carregue a planilha oficial para calcular o ciclo atual.
+            </p>
+          )}
+        </div>
+      )}
 
       {(strategyMode === "fixas" || strategyMode === "fechamento") && (
         <div className="grid gap-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 lg:grid-cols-2">
@@ -928,6 +1049,66 @@ export function StrategyLabPage() {
                   ({((metadata.cobertura ?? 0) * 100).toFixed(1)}%)
                 </span>
               </li>
+            )}
+            {metadata.ciclo && (
+              <>
+                <li>
+                  <span className="text-slate-400">Concursos no ciclo:</span>{" "}
+                  <span className="font-semibold text-white">
+                    {metadata.ciclo.concursosNoCiclo}
+                  </span>
+                </li>
+                <li>
+                  <span className="text-slate-400">Dezenas faltantes:</span>{" "}
+                  <span className="font-semibold text-white">
+                    {formatarOuHifen(metadata.ciclo.dezenasFaltantes)}
+                  </span>
+                </li>
+                {metadata.ciclo.concursosRestantesEstimados !== undefined && (
+                  <li>
+                    <span className="text-slate-400">Previsao:</span>{" "}
+                    <span className="font-semibold text-white">
+                      ~{metadata.ciclo.concursosRestantesEstimados} concurso(s)
+                    </span>
+                  </li>
+                )}
+                {metadata.ciclo.mediaHistorica !== undefined && (
+                  <li>
+                    <span className="text-slate-400">Media historica:</span>{" "}
+                    <span className="font-semibold text-white">
+                      {metadata.ciclo.mediaHistorica.toFixed(1)} concurso(s)
+                    </span>
+                  </li>
+                )}
+                {metadata.ciclo.dezenasQuentes?.length ? (
+                  <li>
+                    <span className="text-slate-400">Quentes:</span>{" "}
+                    <span className="font-semibold text-white">
+                      {formatarLista(metadata.ciclo.dezenasQuentes)}
+                    </span>
+                  </li>
+                ) : null}
+                {metadata.ciclo.recemEncerradas?.length ? (
+                  <li>
+                    <span className="text-slate-400">Recem encerradas:</span>{" "}
+                    <span className="font-semibold text-white">
+                      {formatarLista(metadata.ciclo.recemEncerradas)}
+                    </span>
+                  </li>
+                ) : null}
+                {(metadata.ciclo.ultimoFechamentoConcurso ||
+                  metadata.ciclo.ultimoFechamentoData) && (
+                  <li className="md:col-span-2">
+                    <span className="text-slate-400">Ultimo fechamento:</span>{" "}
+                    <span className="font-semibold text-white">
+                      Concurso {metadata.ciclo.ultimoFechamentoConcurso ?? "--"}
+                      {metadata.ciclo.ultimoFechamentoData
+                        ? ` • ${metadata.ciclo.ultimoFechamentoData}`
+                        : ""}
+                    </span>
+                  </li>
+                )}
+              </>
             )}
             {metadata.observacoes && (
               <li className="md:col-span-2 text-slate-300">

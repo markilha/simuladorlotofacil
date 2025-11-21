@@ -77,6 +77,43 @@ export interface FrequenciaEAtrasoOptions {
   filtros?: StatisticalFilterOptions;
 }
 
+export interface FechamentoCicloOptions {
+  historico: Pick<ConcursoExcel, 'concurso' | 'dezenas' | 'dataSorteio'>[];
+  dezenasPorJogo: number;
+  quantidadeJogos: number;
+  filtros?: StatisticalFilterOptions;
+}
+
+export interface CycleClosureInfo {
+  concurso: number;
+  data?: string;
+  duracao: number;
+}
+
+export interface CycleProgressInfo {
+  dezenasFaltantes: Dezena[];
+  concursosNoCiclo: number;
+  mediaHistorica?: number;
+  estimativaConcursosRestantes?: number;
+  ultimoFechamento?: CycleClosureInfo;
+  dezenasQuentes: Dezena[];
+  recemEncerradas: Dezena[];
+  frequenciasNoCiclo: Record<Dezena, number>;
+  primeiraAparicaoNoCiclo: Record<Dezena, number | null>;
+  ultimaAparicaoNoCiclo: Record<Dezena, number | null>;
+}
+
+export interface CycleMetadata {
+  concursosNoCiclo: number;
+  dezenasFaltantes: Dezena[];
+  mediaHistorica?: number;
+  concursosRestantesEstimados?: number;
+  ultimoFechamentoConcurso?: number;
+  ultimoFechamentoData?: string;
+  dezenasQuentes?: Dezena[];
+  recemEncerradas?: Dezena[];
+}
+
 export interface StrategyMetadata {
   jogosGerados: number;
   universoConsiderado?: Dezena[];
@@ -85,6 +122,7 @@ export interface StrategyMetadata {
   subconjuntosCobertos?: number;
   cobertura?: number;
   observacoes?: string;
+  ciclo?: CycleMetadata;
 }
 
 export interface StrategyResult {
@@ -108,6 +146,22 @@ export interface CondProbabilities {
   probDepoisDeSair: number;
   probDepoisDeNaoSair: number;
 }
+
+const createFrequencyMap = (): Record<Dezena, number> => {
+  const mapa = {} as Record<Dezena, number>;
+  ALL_NUMBERS.forEach((dezena) => {
+    mapa[dezena] = 0;
+  });
+  return mapa;
+};
+
+const createIndexMap = (): Record<Dezena, number | null> => {
+  const mapa = {} as Record<Dezena, number | null>;
+  ALL_NUMBERS.forEach((dezena) => {
+    mapa[dezena] = null;
+  });
+  return mapa;
+};
 
 const uniqueSorted = (numeros: Dezena[]): Dezena[] => {
   const set = Array.from(new Set(numeros));
@@ -667,6 +721,317 @@ export const estrategiaNumerosFrequentesEAtrasados = (
     metadata: {
       jogosGerados: jogos.length,
       observacoes: 'Combina numeros mais frequentes com os mais atrasados do historico.',
+    },
+  };
+};
+
+export const analisarCicloDasDezenas = (
+  historico: Pick<ConcursoExcel, 'concurso' | 'dezenas' | 'dataSorteio'>[],
+): CycleProgressInfo => {
+  if (!historico.length) {
+    throw new Error('Historico vazio para analisar o ciclo das dezenas.');
+  }
+
+  const ordenado = [...historico].sort((a, b) => a.concurso - b.concurso);
+  const ciclosFechados: Array<{
+    concursos: ConcursoExcel[];
+    length: number;
+    endConcurso: number;
+    fechamentoData?: string;
+  }> = [];
+
+  let cicloConcursos: ConcursoExcel[] = [];
+  let numerosVistos = new Set<Dezena>();
+
+  ordenado.forEach((concurso) => {
+    if (!cicloConcursos.length) {
+      numerosVistos = new Set<Dezena>();
+    }
+
+    cicloConcursos.push(concurso);
+    concurso.dezenas.forEach((dezena) => numerosVistos.add(dezena));
+
+    if (numerosVistos.size === ALL_NUMBERS.length) {
+      ciclosFechados.push({
+        concursos: [...cicloConcursos],
+        length: cicloConcursos.length,
+        endConcurso: concurso.concurso,
+        fechamentoData: concurso.dataSorteio,
+      });
+      cicloConcursos = [];
+      numerosVistos = new Set<Dezena>();
+    }
+  });
+
+  const dezenasVistasNoCiclo = new Set<Dezena>();
+  cicloConcursos.forEach((concurso) => concurso.dezenas.forEach((dezena) => dezenasVistasNoCiclo.add(dezena)));
+  const dezenasFaltantes = ALL_NUMBERS.filter((dezena) => !dezenasVistasNoCiclo.has(dezena));
+
+  const frequenciasNoCiclo = createFrequencyMap();
+  const primeiraAparicaoNoCiclo = createIndexMap();
+  const ultimaAparicaoNoCiclo = createIndexMap();
+
+  cicloConcursos.forEach((concurso, indexConcurso) => {
+    concurso.dezenas.forEach((dezena) => {
+      frequenciasNoCiclo[dezena] += 1;
+      if (primeiraAparicaoNoCiclo[dezena] === null) {
+        primeiraAparicaoNoCiclo[dezena] = indexConcurso;
+      }
+      ultimaAparicaoNoCiclo[dezena] = indexConcurso;
+    });
+  });
+
+  const dezenasQuentes = [...ALL_NUMBERS]
+    .sort((a, b) => {
+      const freqDiff = frequenciasNoCiclo[b] - frequenciasNoCiclo[a];
+      if (freqDiff !== 0) return freqDiff;
+      const lastA = ultimaAparicaoNoCiclo[a] ?? -Infinity;
+      const lastB = ultimaAparicaoNoCiclo[b] ?? -Infinity;
+      return lastB - lastA;
+    })
+    .filter((dezena) => frequenciasNoCiclo[dezena] > 0)
+    .slice(0, 10);
+
+  const janelaRecemEncerradas = cicloConcursos.length
+    ? Math.max(1, Math.min(5, Math.round(cicloConcursos.length * 0.2)))
+    : 0;
+
+  const recemEncerradas = janelaRecemEncerradas
+    ? ALL_NUMBERS.filter((dezena) => {
+        const indice = primeiraAparicaoNoCiclo[dezena];
+        return indice !== null && indice >= cicloConcursos.length - janelaRecemEncerradas;
+      })
+    : [];
+
+  const mediaHistorica =
+    ciclosFechados.length > 0
+      ? ciclosFechados.reduce((total, ciclo) => total + ciclo.length, 0) / ciclosFechados.length
+      : undefined;
+
+  const estimativaConcursosRestantes =
+    mediaHistorica !== undefined ? Math.max(Math.round(mediaHistorica - cicloConcursos.length), 0) : undefined;
+
+  const ultimoFechamento = ciclosFechados.length ? ciclosFechados[ciclosFechados.length - 1] : undefined;
+
+  return {
+    dezenasFaltantes,
+    concursosNoCiclo: cicloConcursos.length,
+    mediaHistorica,
+    estimativaConcursosRestantes,
+    ultimoFechamento: ultimoFechamento
+      ? {
+          concurso: ultimoFechamento.endConcurso,
+          data: ultimoFechamento.fechamentoData,
+          duracao: ultimoFechamento.length,
+        }
+      : undefined,
+    dezenasQuentes,
+    recemEncerradas,
+    frequenciasNoCiclo,
+    primeiraAparicaoNoCiclo,
+    ultimaAparicaoNoCiclo,
+  };
+};
+
+const montarJogoNoCiclo = (
+  obrigatorias: Dezena[],
+  hotList: Dezena[],
+  ranking: Dezena[],
+  recemEncerradasSet: Set<Dezena>,
+  faltantesSet: Set<Dezena>,
+  dezenasPorJogo: number,
+  seed: number,
+  permitirRecemEncerradas: boolean,
+): Dezena[] | null => {
+  const jogo = new Set<Dezena>(obrigatorias);
+  const targetHot = Math.min(dezenasPorJogo, Math.max(Math.round(dezenasPorJogo * 0.5), jogo.size));
+
+  if (hotList.length) {
+    let hotPointer = seed % hotList.length;
+    while (jogo.size < dezenasPorJogo && jogo.size < targetHot) {
+      const numero = hotList[hotPointer % hotList.length];
+      hotPointer += 1;
+      if (jogo.has(numero)) continue;
+      if (!permitirRecemEncerradas && recemEncerradasSet.has(numero) && !faltantesSet.has(numero)) {
+        continue;
+      }
+      jogo.add(numero);
+    }
+  }
+
+  let pointer = seed % ranking.length;
+  while (jogo.size < dezenasPorJogo && ranking.length) {
+    const numero = ranking[pointer % ranking.length];
+    pointer += 1;
+    if (jogo.has(numero)) continue;
+    if (!permitirRecemEncerradas && recemEncerradasSet.has(numero) && !faltantesSet.has(numero)) {
+      continue;
+    }
+    jogo.add(numero);
+  }
+
+  if (jogo.size < dezenasPorJogo) {
+    for (const numero of ALL_NUMBERS) {
+      if (jogo.has(numero)) continue;
+      if (!permitirRecemEncerradas && recemEncerradasSet.has(numero) && !faltantesSet.has(numero)) {
+        continue;
+      }
+      jogo.add(numero);
+      if (jogo.size >= dezenasPorJogo) break;
+    }
+  }
+
+  if (jogo.size < dezenasPorJogo) {
+    return null;
+  }
+
+  return Array.from(jogo).sort((a, b) => a - b);
+};
+
+const descreverObservacaoCiclo = (analise: CycleProgressInfo): string => {
+  const faltantesMensagem = analise.dezenasFaltantes.length
+    ? `${analise.dezenasFaltantes.length} dezena(s) faltando`
+    : 'todas as dezenas ja apareceram';
+  const previsaoMensagem =
+    analise.estimativaConcursosRestantes !== undefined
+      ? `Previsao de fechamento em ~${analise.estimativaConcursosRestantes} concurso(s).`
+      : 'Sem historico suficiente para prever o fechamento.';
+  return `Ciclo atual com ${analise.concursosNoCiclo} concurso(s), ${faltantesMensagem}. ${previsaoMensagem}`;
+};
+
+export const criarEstrategiaFechamentoDoCiclo = (options: FechamentoCicloOptions): StrategyResult => {
+  const { historico, dezenasPorJogo, quantidadeJogos, filtros } = options;
+  validateQuantidade(dezenasPorJogo);
+
+  if (!historico.length) {
+    throw new Error('Carregue a planilha oficial para utilizar o fechamento do ciclo.');
+  }
+  if (quantidadeJogos < 1) {
+    throw new Error('Informe a quantidade desejada de jogos.');
+  }
+
+  const analise = analisarCicloDasDezenas(historico);
+  const faltantesSet = new Set(analise.dezenasFaltantes);
+  const recemEncerradasSet = new Set(analise.recemEncerradas);
+  const hotSet = new Set(analise.dezenasQuentes);
+  if (!hotSet.size) {
+    ALL_NUMBERS.forEach((dezena) => {
+      if (analise.frequenciasNoCiclo[dezena] >= 2) {
+        hotSet.add(dezena);
+      }
+    });
+  }
+
+  const rankingPesos = new Map<Dezena, number>();
+  ALL_NUMBERS.forEach((dezena) => {
+    const frequencia = analise.frequenciasNoCiclo[dezena] || 0;
+    const lastIndex = analise.ultimaAparicaoNoCiclo[dezena];
+    let peso = 1 + frequencia * 1.3;
+    if (lastIndex !== null && analise.concursosNoCiclo > 0) {
+      peso += (lastIndex + 1) / analise.concursosNoCiclo;
+    }
+    if (faltantesSet.has(dezena)) {
+      peso += 3;
+    }
+    if (hotSet.has(dezena)) {
+      peso += 1;
+    }
+    if (recemEncerradasSet.has(dezena) && !faltantesSet.has(dezena)) {
+      peso -= 2;
+    }
+    rankingPesos.set(dezena, peso);
+  });
+
+  const ranking = [...ALL_NUMBERS].sort((a, b) => (rankingPesos.get(b) || 0) - (rankingPesos.get(a) || 0));
+  let hotList = ranking.filter((dezena) => hotSet.has(dezena) || faltantesSet.has(dezena));
+  if (!hotList.length) {
+    hotList = ranking.slice(0, Math.min(10, ranking.length));
+  }
+
+  const jogos: Dezena[][] = [];
+  const chaves = new Set<string>();
+  let tentativas = 0;
+  const maxTentativas = quantidadeJogos * 120;
+  let missingPointer = 0;
+
+  const selecionarObrigatorias = (): Dezena[] => {
+    if (!analise.dezenasFaltantes.length) {
+      return [];
+    }
+    if (analise.dezenasFaltantes.length <= 3) {
+      return [...analise.dezenasFaltantes];
+    }
+    const quantidade = Math.min(3, analise.dezenasFaltantes.length);
+    const selecionadas: Dezena[] = [];
+    for (let i = 0; i < quantidade; i += 1) {
+      selecionadas.push(analise.dezenasFaltantes[(missingPointer + i) % analise.dezenasFaltantes.length]);
+    }
+    missingPointer = (missingPointer + quantidade) % analise.dezenasFaltantes.length;
+    return selecionadas;
+  };
+
+  while (jogos.length < quantidadeJogos && tentativas < maxTentativas) {
+    tentativas += 1;
+    const obrigatorias = selecionarObrigatorias();
+    const candidato =
+      montarJogoNoCiclo(
+        obrigatorias,
+        hotList,
+        ranking,
+        recemEncerradasSet,
+        faltantesSet,
+        dezenasPorJogo,
+        jogos.length + tentativas,
+        false,
+      ) ||
+      montarJogoNoCiclo(
+        obrigatorias,
+        hotList,
+        ranking,
+        recemEncerradasSet,
+        faltantesSet,
+        dezenasPorJogo,
+        jogos.length + tentativas,
+        true,
+      );
+
+    if (!candidato) {
+      continue;
+    }
+
+    const chave = candidato.join('-');
+    if (chaves.has(chave)) {
+      continue;
+    }
+
+    if (filtros && !passesFilters(candidato, filtros)) {
+      continue;
+    }
+
+    chaves.add(chave);
+    jogos.push(candidato);
+  }
+
+  if (!jogos.length) {
+    throw new Error('Nao foi possivel gerar jogos respeitando o ciclo atual com os filtros aplicados.');
+  }
+
+  return {
+    jogos,
+    metadata: {
+      jogosGerados: jogos.length,
+      universoConsiderado: ALL_NUMBERS,
+      observacoes: descreverObservacaoCiclo(analise),
+      ciclo: {
+        concursosNoCiclo: analise.concursosNoCiclo,
+        dezenasFaltantes: analise.dezenasFaltantes,
+        mediaHistorica: analise.mediaHistorica,
+        concursosRestantesEstimados: analise.estimativaConcursosRestantes,
+        ultimoFechamentoConcurso: analise.ultimoFechamento?.concurso,
+        ultimoFechamentoData: analise.ultimoFechamento?.data,
+        dezenasQuentes: analise.dezenasQuentes.slice(0, 6),
+        recemEncerradas: analise.recemEncerradas.slice(0, 6),
+      },
     },
   };
 };
