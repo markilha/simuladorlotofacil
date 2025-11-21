@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
-import NumberGrid from '../components/NumberGrid';
-import BetCardPreview from '../components/BetCardPreview';
-import { saveManyBets } from '../storage/betsStorage';
-import type { Aposta, Dezena } from '../types';
-import { createId } from '../utils/id';
-import { carregarResultadosDaConfiguracao, type ConcursoExcel } from '../utils/resultadosExcel';
+import { useEffect, useMemo, useState } from "react";
+import NumberGrid from "../components/NumberGrid";
+import BetCardPreview from "../components/BetCardPreview";
+import { saveManyBets } from "../storage/betsStorage";
+import type { Aposta, Dezena } from "../types";
+import { createId } from "../utils/id";
+import {
+  carregarResultadosDaConfiguracao,
+  type ConcursoExcel,
+} from "../utils/resultadosExcel";
 import {
   calcularMetricasJogo,
   calcularProbabilidadeCondicional,
@@ -18,53 +21,75 @@ import {
   type RangeConstraint,
   type StatisticalFilterOptions,
   type StrategyMetadata,
-} from '../services/strategyEngine';
+} from "../services/strategyEngine";
 
-type StrategyMode = 'fixas' | 'fechamento' | 'desdobramento' | 'balanceado' | 'frequencia';
+type StrategyMode =
+  | "fixas"
+  | "fechamento"
+  | "desdobramento"
+  | "balanceado"
+  | "frequencia";
 
-const criarIntervalosPadrao = () => Array.from({ length: 5 }, () => ({} as RangeConstraint));
+const criarIntervalosPadrao = () =>
+  Array.from({ length: 5 }, () => ({} as RangeConstraint));
 
 const possuiIntervalo = (range?: RangeConstraint) =>
   Boolean(range && (range.min !== undefined || range.max !== undefined));
 
-const possuiIntervalos = (ranges: RangeConstraint[]) => ranges.some((range) => possuiIntervalo(range));
+const possuiIntervalos = (ranges: RangeConstraint[]) =>
+  ranges.some((range) => possuiIntervalo(range));
 
 const parseNumero = (value: string): number | undefined => {
-  if (value.trim() === '') return undefined;
+  if (value.trim() === "") return undefined;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
-const formatarLista = (numeros: Dezena[]) => numeros.map((n) => n.toString().padStart(2, '0')).join(', ');
+const formatarLista = (numeros: Dezena[]) =>
+  numeros.map((n) => n.toString().padStart(2, "0")).join(", ");
 
 export function StrategyLabPage() {
-  const [strategyMode, setStrategyMode] = useState<StrategyMode>('fixas');
+  const [strategyMode, setStrategyMode] = useState<StrategyMode>("fixas");
   const [fixas, setFixas] = useState<Dezena[]>([]);
   const [variaveis, setVariaveis] = useState<Dezena[]>([]);
   const [base, setBase] = useState<Dezena[]>([]);
-  const [dezenasPorJogo, setDezenasPorJogo] = useState<Aposta['dezenasPorJogo']>(15);
+  const [dezenasPorJogo, setDezenasPorJogo] =
+    useState<Aposta["dezenasPorJogo"]>(15);
   const [quantidadeJogos, setQuantidadeJogos] = useState(20);
   const [garantia, setGarantia] = useState<GuaranteeLevel>(12);
   const [maxJogosFechamento, setMaxJogosFechamento] = useState(80);
   const [proporcaoFrequentes, setProporcaoFrequentes] = useState(0.6);
-  const [nomeEstrategia, setNomeEstrategia] = useState('Estratégia avançada');
-  const [mensagem, setMensagem] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(null);
+  const [nomeEstrategia, setNomeEstrategia] = useState("Estratégia avançada");
+  const [mensagem, setMensagem] = useState<{
+    tipo: "sucesso" | "erro";
+    texto: string;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [jogosGerados, setJogosGerados] = useState<Dezena[][]>([]);
   const [metadata, setMetadata] = useState<StrategyMetadata | null>(null);
   const [historico, setHistorico] = useState<ConcursoExcel[]>([]);
-  const [statusPlanilha, setStatusPlanilha] = useState('Carregando planilha configurada...');
-  const [probabilidades, setProbabilidades] = useState<CondProbabilities[] | null>(null);
-  const [ultimoResultadoInput, setUltimoResultadoInput] = useState('');
-  const [ultimoResultadoFiltro, setUltimoResultadoFiltro] = useState<Dezena[]>([]);
+  const [statusPlanilha, setStatusPlanilha] = useState(
+    "Carregando planilha configurada..."
+  );
+  const [probabilidades, setProbabilidades] = useState<
+    CondProbabilities[] | null
+  >(null);
+  const [ultimoResultadoInput, setUltimoResultadoInput] = useState("");
+  const [ultimoResultadoFiltro, setUltimoResultadoFiltro] = useState<Dezena[]>(
+    []
+  );
 
   const [paresRange, setParesRange] = useState<RangeConstraint>({});
   const [imparesRange, setImparesRange] = useState<RangeConstraint>({});
   const [somaRange, setSomaRange] = useState<RangeConstraint>({});
   const [faixaBaixaRange, setFaixaBaixaRange] = useState<RangeConstraint>({});
   const [faixaAltaRange, setFaixaAltaRange] = useState<RangeConstraint>({});
-  const [linhasRanges, setLinhasRanges] = useState<RangeConstraint[]>(() => criarIntervalosPadrao());
-  const [colunasRanges, setColunasRanges] = useState<RangeConstraint[]>(() => criarIntervalosPadrao());
+  const [linhasRanges, setLinhasRanges] = useState<RangeConstraint[]>(() =>
+    criarIntervalosPadrao()
+  );
+  const [colunasRanges, setColunasRanges] = useState<RangeConstraint[]>(() =>
+    criarIntervalosPadrao()
+  );
   const [repeticaoRange, setRepeticaoRange] = useState<RangeConstraint>({});
 
   const carregarHistorico = () => {
@@ -76,7 +101,9 @@ export function StrategyLabPage() {
       setHistorico([]);
       setProbabilidades(null);
       setStatusPlanilha(
-        error instanceof Error ? error.message : 'Nenhuma planilha configurada. Use a aba Configurações.',
+        error instanceof Error
+          ? error.message
+          : "Nenhuma planilha configurada. Use a aba Configurações."
       );
     }
   };
@@ -111,7 +138,10 @@ export function StrategyLabPage() {
       filtros.colunas = colunasRanges;
     }
     if (ultimoResultadoFiltro.length && possuiIntervalo(repeticaoRange)) {
-      filtros.repeticaoUltimo = { ...repeticaoRange, dezenas: ultimoResultadoFiltro };
+      filtros.repeticaoUltimo = {
+        ...repeticaoRange,
+        dezenas: ultimoResultadoFiltro,
+      };
     }
 
     return filtros;
@@ -127,10 +157,14 @@ export function StrategyLabPage() {
     ultimoResultadoFiltro,
   ]);
 
-  const filtrosParaEnvio = Object.keys(filtrosAplicados).length ? filtrosAplicados : undefined;
+  const filtrosParaEnvio = Object.keys(filtrosAplicados).length
+    ? filtrosAplicados
+    : undefined;
 
-  const atualizarRange = (setter: (updater: (prev: RangeConstraint) => RangeConstraint) => void) => {
-    return (bound: 'min' | 'max', value: string) => {
+  const atualizarRange = (
+    setter: (updater: (prev: RangeConstraint) => RangeConstraint) => void
+  ) => {
+    return (bound: "min" | "max", value: string) => {
       setter((prev) => {
         const parsed = parseNumero(value);
         if (parsed === undefined) {
@@ -146,8 +180,8 @@ export function StrategyLabPage() {
   const atualizarRangeLista = (
     setter: (updater: (prev: RangeConstraint[]) => RangeConstraint[]) => void,
     index: number,
-    bound: 'min' | 'max',
-    value: string,
+    bound: "min" | "max",
+    value: string
   ) => {
     setter((prev) => {
       const copia = prev.map((item) => ({ ...item }));
@@ -197,17 +231,22 @@ export function StrategyLabPage() {
     const numeros: Dezena[] = [];
     tokens.forEach((token) => {
       const valor = Number(token);
-      if (Number.isInteger(valor) && valor >= 1 && valor <= 25 && !numeros.includes(valor as Dezena)) {
+      if (
+        Number.isInteger(valor) &&
+        valor >= 1 &&
+        valor <= 25 &&
+        !numeros.includes(valor as Dezena)
+      ) {
         numeros.push(valor as Dezena);
       }
     });
     setUltimoResultadoFiltro(numeros);
     setMensagem({
-      tipo: 'sucesso',
+      tipo: "sucesso",
       texto:
         numeros.length > 0
           ? `Filtro atualizado com ${numeros.length} dezenas do último resultado.`
-          : 'Filtro de repetição limpo.',
+          : "Filtro de repetição limpo.",
     });
   };
 
@@ -218,9 +257,9 @@ export function StrategyLabPage() {
     try {
       let resultado: { jogos: Dezena[][]; metadata: StrategyMetadata };
       switch (strategyMode) {
-        case 'fixas':
+        case "fixas":
           if (!fixas.length) {
-            throw new Error('Selecione ao menos uma dezena fixa.');
+            throw new Error("Selecione ao menos uma dezena fixa.");
           }
           resultado = criarEstrategiaComFixas({
             fixas,
@@ -230,9 +269,11 @@ export function StrategyLabPage() {
             filtros: filtrosParaEnvio,
           });
           break;
-        case 'fechamento':
+        case "fechamento":
           if (!variaveis.length) {
-            throw new Error('Escolha dezenas variáveis para montar o fechamento.');
+            throw new Error(
+              "Escolha dezenas variáveis para montar o fechamento."
+            );
           }
           resultado = criarFechamentoGarantido({
             fixas,
@@ -243,9 +284,9 @@ export function StrategyLabPage() {
             filtros: filtrosParaEnvio,
           });
           break;
-        case 'desdobramento':
+        case "desdobramento":
           if (!base.length) {
-            throw new Error('Selecione o universo base para o desdobramento.');
+            throw new Error("Selecione o universo base para o desdobramento.");
           }
           resultado = criarDesdobramentoInteligente({
             base,
@@ -255,16 +296,18 @@ export function StrategyLabPage() {
             filtros: filtrosParaEnvio,
           });
           break;
-        case 'balanceado':
+        case "balanceado":
           resultado = gerarJogosBalanceados({
             dezenasPorJogo,
             quantidadeJogos,
             filtros: filtrosParaEnvio,
           });
           break;
-        case 'frequencia':
+        case "frequencia":
           if (!historico.length) {
-            throw new Error('Carregue a planilha oficial antes de usar esta estratégia.');
+            throw new Error(
+              "Carregue a planilha oficial antes de usar esta estratégia."
+            );
           }
           resultado = estrategiaNumerosFrequentesEAtrasados({
             historico,
@@ -275,21 +318,22 @@ export function StrategyLabPage() {
           });
           break;
         default:
-          throw new Error('Estratégia não suportada.');
+          throw new Error("Estratégia não suportada.");
       }
 
       setJogosGerados(resultado.jogos);
       setMetadata(resultado.metadata);
       setMensagem({
-        tipo: 'sucesso',
+        tipo: "sucesso",
         texto: `Estratégia gerou ${resultado.jogos.length} jogo(s). Confira as métricas abaixo.`,
       });
     } catch (error) {
       setJogosGerados([]);
       setMetadata(null);
       setMensagem({
-        tipo: 'erro',
-        texto: error instanceof Error ? error.message : 'Falha ao gerar estratégia.',
+        tipo: "erro",
+        texto:
+          error instanceof Error ? error.message : "Falha ao gerar estratégia.",
       });
     } finally {
       setLoading(false);
@@ -312,7 +356,7 @@ export function StrategyLabPage() {
     jogosGerados.forEach((jogo) => {
       const metricas = calcularMetricasJogo(
         jogo,
-        ultimoResultadoFiltro.length ? ultimoResultadoFiltro : undefined,
+        ultimoResultadoFiltro.length ? ultimoResultadoFiltro : undefined
       );
       somaTotal += metricas.soma;
       pares += metricas.pares;
@@ -336,7 +380,9 @@ export function StrategyLabPage() {
       mediaImpares: impares / total,
       mediaBaixas: baixas / total,
       mediaAltas: altas / total,
-      mediaRepeticao: ultimoResultadoFiltro.length ? repeticaoTotal / total : null,
+      mediaRepeticao: ultimoResultadoFiltro.length
+        ? repeticaoTotal / total
+        : null,
       linhas: somaLinhas.map((valor) => valor / total),
       colunas: somaColunas.map((valor) => valor / total),
     };
@@ -344,30 +390,40 @@ export function StrategyLabPage() {
 
   const salvarAposta = () => {
     if (!jogosGerados.length) {
-      setMensagem({ tipo: 'erro', texto: 'Gere uma estratégia antes de salvar.' });
+      setMensagem({
+        tipo: "erro",
+        texto: "Gere uma estratégia antes de salvar.",
+      });
       return;
     }
     const aposta: Aposta = {
       id: createId(),
-      tipo: 'estrategia',
-      nome: nomeEstrategia || 'Estratégia avançada',
+      tipo: "estrategia",
+      nome: nomeEstrategia || "Estratégia avançada",
       dataCriacao: new Date().toISOString(),
       dezenasPorJogo,
       jogos: jogosGerados,
       dezenasFixas: fixas.length ? [...fixas].sort((a, b) => a - b) : undefined,
     };
     saveManyBets(aposta);
-    setMensagem({ tipo: 'sucesso', texto: 'Estratégia salva no histórico de apostas.' });
+    setMensagem({
+      tipo: "sucesso",
+      texto: "Estratégia salva no histórico de apostas.",
+    });
   };
 
   const topProbDepoisDeSair = useMemo(() => {
     if (!probabilidades) return [];
-    return [...probabilidades].sort((a, b) => b.probDepoisDeSair - a.probDepoisDeSair).slice(0, 5);
+    return [...probabilidades]
+      .sort((a, b) => b.probDepoisDeSair - a.probDepoisDeSair)
+      .slice(0, 5);
   }, [probabilidades]);
 
   const topProbDepoisDeNaoSair = useMemo(() => {
     if (!probabilidades) return [];
-    return [...probabilidades].sort((a, b) => b.probDepoisDeNaoSair - a.probDepoisDeNaoSair).slice(0, 5);
+    return [...probabilidades]
+      .sort((a, b) => b.probDepoisDeNaoSair - a.probDepoisDeNaoSair)
+      .slice(0, 5);
   }, [probabilidades]);
 
   return (
@@ -375,8 +431,10 @@ export function StrategyLabPage() {
       <header className="space-y-2">
         <h2 className="text-2xl font-semibold">Laboratório de Estratégias</h2>
         <p className="text-sm text-slate-400">
-          Combine fechamentos, fixas, desdobramentos e filtros estatísticos para criar jogos de 15 a 20 dezenas com
-          métricas auditáveis. Aproveite o histórico oficial para frequências, atrasos e probabilidades condicionais.
+          Combine fechamentos, fixas, desdobramentos e filtros estatísticos para
+          criar jogos de 15 a 20 dezenas com métricas auditáveis. Aproveite o
+          histórico oficial para frequências, atrasos e probabilidades
+          condicionais.
         </p>
       </header>
 
@@ -394,7 +452,9 @@ export function StrategyLabPage() {
           Estratégia
           <select
             value={strategyMode}
-            onChange={(event) => setStrategyMode(event.target.value as StrategyMode)}
+            onChange={(event) =>
+              setStrategyMode(event.target.value as StrategyMode)
+            }
             className="mt-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
           >
             <option value="fixas">Fixas + variáveis inteligentes</option>
@@ -408,7 +468,11 @@ export function StrategyLabPage() {
           Dezenas por jogo
           <select
             value={dezenasPorJogo}
-            onChange={(event) => setDezenasPorJogo(Number(event.target.value) as Aposta['dezenasPorJogo'])}
+            onChange={(event) =>
+              setDezenasPorJogo(
+                Number(event.target.value) as Aposta["dezenasPorJogo"]
+              )
+            }
             className="mt-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
           >
             {[15, 16, 17, 18, 19, 20].map((option) => (
@@ -425,17 +489,22 @@ export function StrategyLabPage() {
             min={1}
             max={500}
             value={quantidadeJogos}
-            onChange={(event) => setQuantidadeJogos(Math.max(1, Number(event.target.value) || 1))}
+            onChange={(event) =>
+              setQuantidadeJogos(Math.max(1, Number(event.target.value) || 1))
+            }
             className="mt-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
-            disabled={strategyMode === 'fechamento'}
+            disabled={strategyMode === "fechamento"}
           />
         </label>
-        {(strategyMode === 'fechamento' || strategyMode === 'desdobramento') && (
+        {(strategyMode === "fechamento" ||
+          strategyMode === "desdobramento") && (
           <label className="flex flex-col text-sm font-semibold text-slate-200">
             Garantia
             <select
               value={garantia}
-              onChange={(event) => setGarantia(Number(event.target.value) as GuaranteeLevel)}
+              onChange={(event) =>
+                setGarantia(Number(event.target.value) as GuaranteeLevel)
+              }
               className="mt-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
             >
               {[11, 12, 13, 14].map((valor) => (
@@ -446,7 +515,7 @@ export function StrategyLabPage() {
             </select>
           </label>
         )}
-        {strategyMode === 'fechamento' && (
+        {strategyMode === "fechamento" && (
           <label className="flex flex-col text-sm font-semibold text-slate-200">
             Limite de jogos
             <input
@@ -454,12 +523,16 @@ export function StrategyLabPage() {
               min={1}
               max={500}
               value={maxJogosFechamento}
-              onChange={(event) => setMaxJogosFechamento(Math.max(1, Number(event.target.value) || 1))}
+              onChange={(event) =>
+                setMaxJogosFechamento(
+                  Math.max(1, Number(event.target.value) || 1)
+                )
+              }
               className="mt-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
             />
           </label>
         )}
-        {strategyMode === 'frequencia' && (
+        {strategyMode === "frequencia" && (
           <label className="flex flex-col text-sm font-semibold text-slate-200">
             Proporção de números frequentes
             <input
@@ -468,39 +541,61 @@ export function StrategyLabPage() {
               max={0.9}
               step={0.05}
               value={proporcaoFrequentes}
-              onChange={(event) => setProporcaoFrequentes(Number(event.target.value))}
+              onChange={(event) =>
+                setProporcaoFrequentes(Number(event.target.value))
+              }
               className="mt-3"
             />
             <span className="text-xs text-slate-400">
-              {Math.round(proporcaoFrequentes * 100)}% das dezenas virão do grupo mais frequente.
+              {Math.round(proporcaoFrequentes * 100)}% das dezenas virão do
+              grupo mais frequente.
             </span>
           </label>
         )}
       </div>
 
-      {(strategyMode === 'fixas' || strategyMode === 'fechamento') && (
+      {(strategyMode === "fixas" || strategyMode === "fechamento") && (
         <div className="grid gap-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 lg:grid-cols-2">
           <div className="space-y-2">
             <p className="text-sm font-semibold text-emerald-300">
-              Fixas selecionadas ({fixas.length}) — use este quadro para travar dezenas em todos os jogos.
+              Fixas selecionadas ({fixas.length}) — use este quadro para travar
+              dezenas em todos os jogos.
             </p>
-            <NumberGrid selected={fixas} onToggleNumber={handleToggleFixas} maxSelectable={12} />
-            {fixas.length > 0 && <p className="text-xs text-slate-400">Fixas: {formatarLista(fixas)}</p>}
+            <NumberGrid
+              selected={fixas}
+              onToggleNumber={handleToggleFixas}
+              maxSelectable={12}
+            />
+            {fixas.length > 0 && (
+              <p className="text-xs text-slate-400">
+                Fixas: {formatarLista(fixas)}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <p className="text-sm font-semibold text-indigo-300">
-              Variáveis ({variaveis.length}) — serão distribuídas para complementar cada volante.
+              Variáveis ({variaveis.length}) — serão distribuídas para
+              complementar cada volante.
             </p>
-            <NumberGrid selected={variaveis} onToggleNumber={handleToggleVariaveis} disabledNumbers={fixas} />
-            {variaveis.length > 0 && <p className="text-xs text-slate-400">Variáveis: {formatarLista(variaveis)}</p>}
+            <NumberGrid
+              selected={variaveis}
+              onToggleNumber={handleToggleVariaveis}
+              disabledNumbers={fixas}
+            />
+            {variaveis.length > 0 && (
+              <p className="text-xs text-slate-400">
+                Variáveis: {formatarLista(variaveis)}
+              </p>
+            )}
           </div>
         </div>
       )}
 
-      {strategyMode === 'desdobramento' && (
+      {strategyMode === "desdobramento" && (
         <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
           <p className="text-sm font-semibold text-slate-200">
-            Universo base ({base.length}) — quanto maior a base, mais combinações serão avaliadas.
+            Universo base ({base.length}) — quanto maior a base, mais
+            combinações serão avaliadas.
           </p>
           <NumberGrid selected={base} onToggleNumber={handleToggleBase} />
         </div>
@@ -508,7 +603,9 @@ export function StrategyLabPage() {
 
       <div className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-          <p className="text-xs font-semibold uppercase text-slate-400">Planilha oficial</p>
+          <p className="text-xs font-semibold uppercase text-slate-400">
+            Planilha oficial
+          </p>
           <button
             type="button"
             onClick={carregarHistorico}
@@ -521,28 +618,46 @@ export function StrategyLabPage() {
       </div>
 
       <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-        <h3 className="text-lg font-semibold text-white">Filtros estatísticos</h3>
+        <h3 className="text-lg font-semibold text-white">
+          Filtros estatísticos
+        </h3>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[
-            { label: 'Pares', range: paresRange, setter: atualizarRange(setParesRange), minHint: 'mín', maxHint: 'máx' },
-            { label: 'Ímpares', range: imparesRange, setter: atualizarRange(setImparesRange) },
-            { label: 'Soma', range: somaRange, setter: atualizarRange(setSomaRange), minHint: 'mín', maxHint: 'máx' },
+            {
+              label: "Pares",
+              range: paresRange,
+              setter: atualizarRange(setParesRange),
+              minHint: "mín",
+              maxHint: "máx",
+            },
+            {
+              label: "Ímpares",
+              range: imparesRange,
+              setter: atualizarRange(setImparesRange),
+            },
+            {
+              label: "Soma",
+              range: somaRange,
+              setter: atualizarRange(setSomaRange),
+              minHint: "mín",
+              maxHint: "máx",
+            },
           ].map((item) => (
             <div key={item.label} className="text-sm">
               <p className="font-semibold text-slate-200">{item.label}</p>
               <div className="mt-1 flex gap-2">
                 <input
                   type="number"
-                  value={item.range.min ?? ''}
-                  onChange={(event) => item.setter('min', event.target.value)}
-                  placeholder={item.minHint ?? 'mín'}
+                  value={item.range.min ?? ""}
+                  onChange={(event) => item.setter("min", event.target.value)}
+                  placeholder={item.minHint ?? "mín"}
                   className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
                 />
                 <input
                   type="number"
-                  value={item.range.max ?? ''}
-                  onChange={(event) => item.setter('max', event.target.value)}
-                  placeholder={item.maxHint ?? 'máx'}
+                  value={item.range.max ?? ""}
+                  onChange={(event) => item.setter("max", event.target.value)}
+                  placeholder={item.maxHint ?? "máx"}
                   className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
                 />
               </div>
@@ -556,15 +671,19 @@ export function StrategyLabPage() {
             <div className="mt-1 flex gap-2">
               <input
                 type="number"
-                value={faixaBaixaRange.min ?? ''}
-                onChange={(event) => atualizarRange(setFaixaBaixaRange)('min', event.target.value)}
+                value={faixaBaixaRange.min ?? ""}
+                onChange={(event) =>
+                  atualizarRange(setFaixaBaixaRange)("min", event.target.value)
+                }
                 placeholder="mín"
                 className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
               />
               <input
                 type="number"
-                value={faixaBaixaRange.max ?? ''}
-                onChange={(event) => atualizarRange(setFaixaBaixaRange)('max', event.target.value)}
+                value={faixaBaixaRange.max ?? ""}
+                onChange={(event) =>
+                  atualizarRange(setFaixaBaixaRange)("max", event.target.value)
+                }
                 placeholder="máx"
                 className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
               />
@@ -575,15 +694,19 @@ export function StrategyLabPage() {
             <div className="mt-1 flex gap-2">
               <input
                 type="number"
-                value={faixaAltaRange.min ?? ''}
-                onChange={(event) => atualizarRange(setFaixaAltaRange)('min', event.target.value)}
+                value={faixaAltaRange.min ?? ""}
+                onChange={(event) =>
+                  atualizarRange(setFaixaAltaRange)("min", event.target.value)
+                }
                 placeholder="mín"
                 className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
               />
               <input
                 type="number"
-                value={faixaAltaRange.max ?? ''}
-                onChange={(event) => atualizarRange(setFaixaAltaRange)('max', event.target.value)}
+                value={faixaAltaRange.max ?? ""}
+                onChange={(event) =>
+                  atualizarRange(setFaixaAltaRange)("max", event.target.value)
+                }
                 placeholder="máx"
                 className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
               />
@@ -593,17 +716,28 @@ export function StrategyLabPage() {
 
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <p className="text-sm font-semibold text-slate-200">Distribuição por linha (0-5 por linha)</p>
+            <p className="text-sm font-semibold text-slate-200">
+              Distribuição por linha (0-5 por linha)
+            </p>
             <div className="mt-2 grid grid-cols-5 gap-2 text-xs">
               {linhasRanges.map((range, index) => (
                 <div key={`linha-${index}`} className="space-y-1">
-                  <p className="text-center font-semibold text-slate-400">L{index + 1}</p>
+                  <p className="text-center font-semibold text-slate-400">
+                    L{index + 1}
+                  </p>
                   <input
                     type="number"
                     min={0}
                     max={5}
-                    value={range.min ?? ''}
-                    onChange={(event) => atualizarRangeLista(setLinhasRanges, index, 'min', event.target.value)}
+                    value={range.min ?? ""}
+                    onChange={(event) =>
+                      atualizarRangeLista(
+                        setLinhasRanges,
+                        index,
+                        "min",
+                        event.target.value
+                      )
+                    }
                     placeholder="mín"
                     className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-center"
                   />
@@ -611,8 +745,15 @@ export function StrategyLabPage() {
                     type="number"
                     min={0}
                     max={5}
-                    value={range.max ?? ''}
-                    onChange={(event) => atualizarRangeLista(setLinhasRanges, index, 'max', event.target.value)}
+                    value={range.max ?? ""}
+                    onChange={(event) =>
+                      atualizarRangeLista(
+                        setLinhasRanges,
+                        index,
+                        "max",
+                        event.target.value
+                      )
+                    }
                     placeholder="máx"
                     className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-center"
                   />
@@ -621,17 +762,28 @@ export function StrategyLabPage() {
             </div>
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-200">Distribuição por coluna (0-5 por coluna)</p>
+            <p className="text-sm font-semibold text-slate-200">
+              Distribuição por coluna (0-5 por coluna)
+            </p>
             <div className="mt-2 grid grid-cols-5 gap-2 text-xs">
               {colunasRanges.map((range, index) => (
                 <div key={`coluna-${index}`} className="space-y-1">
-                  <p className="text-center font-semibold text-slate-400">C{index + 1}</p>
+                  <p className="text-center font-semibold text-slate-400">
+                    C{index + 1}
+                  </p>
                   <input
                     type="number"
                     min={0}
                     max={5}
-                    value={range.min ?? ''}
-                    onChange={(event) => atualizarRangeLista(setColunasRanges, index, 'min', event.target.value)}
+                    value={range.min ?? ""}
+                    onChange={(event) =>
+                      atualizarRangeLista(
+                        setColunasRanges,
+                        index,
+                        "min",
+                        event.target.value
+                      )
+                    }
                     placeholder="mín"
                     className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-center"
                   />
@@ -639,8 +791,15 @@ export function StrategyLabPage() {
                     type="number"
                     min={0}
                     max={5}
-                    value={range.max ?? ''}
-                    onChange={(event) => atualizarRangeLista(setColunasRanges, index, 'max', event.target.value)}
+                    value={range.max ?? ""}
+                    onChange={(event) =>
+                      atualizarRangeLista(
+                        setColunasRanges,
+                        index,
+                        "max",
+                        event.target.value
+                      )
+                    }
                     placeholder="máx"
                     className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1 text-center"
                   />
@@ -651,7 +810,9 @@ export function StrategyLabPage() {
         </div>
 
         <div className="space-y-2 rounded-lg border border-slate-800 bg-slate-950/60 p-3 text-sm">
-          <p className="font-semibold text-slate-200">Repetição do último resultado</p>
+          <p className="font-semibold text-slate-200">
+            Repetição do último resultado
+          </p>
           <textarea
             value={ultimoResultadoInput}
             onChange={(event) => setUltimoResultadoInput(event.target.value)}
@@ -663,8 +824,10 @@ export function StrategyLabPage() {
               type="number"
               min={0}
               max={15}
-              value={repeticaoRange.min ?? ''}
-              onChange={(event) => atualizarRange(setRepeticaoRange)('min', event.target.value)}
+              value={repeticaoRange.min ?? ""}
+              onChange={(event) =>
+                atualizarRange(setRepeticaoRange)("min", event.target.value)
+              }
               placeholder="mín"
               className="w-24 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
             />
@@ -672,8 +835,10 @@ export function StrategyLabPage() {
               type="number"
               min={0}
               max={15}
-              value={repeticaoRange.max ?? ''}
-              onChange={(event) => atualizarRange(setRepeticaoRange)('max', event.target.value)}
+              value={repeticaoRange.max ?? ""}
+              onChange={(event) =>
+                atualizarRange(setRepeticaoRange)("max", event.target.value)
+              }
               placeholder="máx"
               className="w-24 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
             />
@@ -685,7 +850,9 @@ export function StrategyLabPage() {
               Aplicar dezenas
             </button>
             {ultimoResultadoFiltro.length > 0 && (
-              <span className="text-xs text-slate-400">Último filtro: {formatarLista(ultimoResultadoFiltro)}</span>
+              <span className="text-xs text-slate-400">
+                Último filtro: {formatarLista(ultimoResultadoFiltro)}
+              </span>
             )}
           </div>
         </div>
@@ -694,7 +861,9 @@ export function StrategyLabPage() {
       {mensagem && (
         <div
           className={`rounded-lg border px-4 py-3 text-sm ${
-            mensagem.tipo === 'sucesso' ? 'border-emerald-500 text-emerald-300' : 'border-rose-500 text-rose-200'
+            mensagem.tipo === "sucesso"
+              ? "border-emerald-500 text-emerald-300"
+              : "border-rose-500 text-rose-200"
           }`}
         >
           {mensagem.texto}
@@ -708,7 +877,7 @@ export function StrategyLabPage() {
           className="rounded-lg bg-emerald-500 px-5 py-3 font-semibold text-slate-950 hover:bg-emerald-600 disabled:opacity-60"
           disabled={loading}
         >
-          {loading ? 'Calculando...' : 'Gerar estratégia'}
+          {loading ? "Calculando..." : "Gerar estratégia"}
         </button>
         <button
           type="button"
@@ -733,28 +902,37 @@ export function StrategyLabPage() {
 
       {metadata && (
         <div className="space-y-2 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-200">
-          <p className="text-base font-semibold text-white">Resumo da estratégia</p>
+          <p className="text-base font-semibold text-white">
+            Resumo da estratégia
+          </p>
           <ul className="grid gap-3 md:grid-cols-2">
             <li>
-              <span className="text-slate-400">Jogos gerados:</span>{' '}
-              <span className="font-semibold text-white">{metadata.jogosGerados}</span>
+              <span className="text-slate-400">Jogos gerados:</span>{" "}
+              <span className="font-semibold text-white">
+                {metadata.jogosGerados}
+              </span>
             </li>
             {metadata.garantia && (
               <li>
-                <span className="text-slate-400">Garantia:</span>{' '}
-                <span className="font-semibold text-white">{metadata.garantia} pontos</span>
+                <span className="text-slate-400">Garantia:</span>{" "}
+                <span className="font-semibold text-white">
+                  {metadata.garantia} pontos
+                </span>
               </li>
             )}
             {metadata.subconjuntosTotais !== undefined && (
               <li>
-                <span className="text-slate-400">Cobertura:</span>{' '}
+                <span className="text-slate-400">Cobertura:</span>{" "}
                 <span className="font-semibold text-white">
-                  {metadata.subconjuntosCobertos}/{metadata.subconjuntosTotais} ({((metadata.cobertura ?? 0) * 100).toFixed(1)}%)
+                  {metadata.subconjuntosCobertos}/{metadata.subconjuntosTotais}{" "}
+                  ({((metadata.cobertura ?? 0) * 100).toFixed(1)}%)
                 </span>
               </li>
             )}
             {metadata.observacoes && (
-              <li className="md:col-span-2 text-slate-300">{metadata.observacoes}</li>
+              <li className="md:col-span-2 text-slate-300">
+                {metadata.observacoes}
+              </li>
             )}
           </ul>
         </div>
@@ -762,45 +940,62 @@ export function StrategyLabPage() {
 
       {metricasResumo && (
         <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-base font-semibold text-white">Métricas acumuladas</p>
+          <p className="text-base font-semibold text-white">
+            Métricas acumuladas
+          </p>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-lg bg-slate-950/50 p-3 text-sm">
               <p className="text-slate-400">Soma média</p>
-              <p className="text-2xl font-semibold text-emerald-400">{metricasResumo.mediaSoma.toFixed(1)}</p>
+              <p className="text-2xl font-semibold text-emerald-400">
+                {metricasResumo.mediaSoma.toFixed(1)}
+              </p>
             </div>
             <div className="rounded-lg bg-slate-950/50 p-3 text-sm">
               <p className="text-slate-400">Pares × Ímpares</p>
               <p className="text-lg font-semibold text-white">
-                {metricasResumo.mediaPares.toFixed(1)} / {metricasResumo.mediaImpares.toFixed(1)}
+                {metricasResumo.mediaPares.toFixed(1)} /{" "}
+                {metricasResumo.mediaImpares.toFixed(1)}
               </p>
             </div>
             <div className="rounded-lg bg-slate-950/50 p-3 text-sm">
               <p className="text-slate-400">Baixos × Altos</p>
               <p className="text-lg font-semibold text-white">
-                {metricasResumo.mediaBaixas.toFixed(1)} / {metricasResumo.mediaAltas.toFixed(1)}
+                {metricasResumo.mediaBaixas.toFixed(1)} /{" "}
+                {metricasResumo.mediaAltas.toFixed(1)}
               </p>
             </div>
             {metricasResumo.mediaRepeticao !== null && (
               <div className="rounded-lg bg-slate-950/50 p-3 text-sm">
                 <p className="text-slate-400">Repetição média</p>
-                <p className="text-lg font-semibold text-white">{metricasResumo.mediaRepeticao.toFixed(2)} dezenas</p>
+                <p className="text-lg font-semibold text-white">
+                  {metricasResumo.mediaRepeticao.toFixed(2)} dezenas
+                </p>
               </div>
             )}
           </div>
           <div className="grid gap-6 md:grid-cols-2">
             <div>
-              <p className="mb-2 text-sm font-semibold text-slate-200">Distribuição por linha</p>
+              <p className="mb-2 text-sm font-semibold text-slate-200">
+                Distribuição por linha
+              </p>
               <div className="space-y-2 text-xs">
                 {metricasResumo.linhas.map((valor, index) => (
                   <div key={`linha-bar-${index}`}>
                     <div className="flex justify-between">
                       <span className="text-slate-400">Linha {index + 1}</span>
-                      <span className="font-semibold text-white">{valor.toFixed(2)}</span>
+                      <span className="font-semibold text-white">
+                        {valor.toFixed(2)}
+                      </span>
                     </div>
                     <div className="h-2 w-full rounded-full bg-slate-800">
                       <div
                         className="h-full rounded-full bg-emerald-500"
-                        style={{ width: `${Math.min((valor / dezenasPorJogo) * 200, 100)}%` }}
+                        style={{
+                          width: `${Math.min(
+                            (valor / dezenasPorJogo) * 200,
+                            100
+                          )}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -808,18 +1003,27 @@ export function StrategyLabPage() {
               </div>
             </div>
             <div>
-              <p className="mb-2 text-sm font-semibold text-slate-200">Distribuição por coluna</p>
+              <p className="mb-2 text-sm font-semibold text-slate-200">
+                Distribuição por coluna
+              </p>
               <div className="space-y-2 text-xs">
                 {metricasResumo.colunas.map((valor, index) => (
                   <div key={`coluna-bar-${index}`}>
                     <div className="flex justify-between">
                       <span className="text-slate-400">Coluna {index + 1}</span>
-                      <span className="font-semibold text-white">{valor.toFixed(2)}</span>
+                      <span className="font-semibold text-white">
+                        {valor.toFixed(2)}
+                      </span>
                     </div>
                     <div className="h-2 w-full rounded-full bg-slate-800">
                       <div
                         className="h-full rounded-full bg-indigo-500"
-                        style={{ width: `${Math.min((valor / dezenasPorJogo) * 200, 100)}%` }}
+                        style={{
+                          width: `${Math.min(
+                            (valor / dezenasPorJogo) * 200,
+                            100
+                          )}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -838,15 +1042,16 @@ export function StrategyLabPage() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {jogosGerados.slice(0, 9).map((jogo, index) => (
               <BetCardPreview
-                key={`${jogo.join('-')}-${index}`}
-                title={`Jogo ${String(index + 1).padStart(2, '0')}`}
+                key={`${jogo.join("-")}-${index}`}
+                title={`Jogo ${String(index + 1).padStart(2, "0")}`}
                 dezenas={jogo}
               />
             ))}
           </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4 text-xs text-slate-400">
-            Total gerado: {jogosGerados.length} jogo(s) · Este painel utiliza as funções matemáticas de fechamento,
-            filtros e probabilidade implementadas no motor da aplicação.
+            Total gerado: {jogosGerados.length} jogo(s) · Este painel utiliza as
+            funções matemáticas de fechamento, filtros e probabilidade
+            implementadas no motor da aplicação.
           </div>
         </div>
       )}
@@ -854,18 +1059,24 @@ export function StrategyLabPage() {
       {probabilidades && (
         <div className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
           <div className="flex flex-wrap items-center justify-between">
-            <p className="text-base font-semibold text-white">Probabilidade condicional (histórico)</p>
+            <p className="text-base font-semibold text-white">
+              Probabilidade condicional (histórico)
+            </p>
             <button
               type="button"
               className="rounded-lg bg-slate-800 px-3 py-1 text-xs font-semibold hover:bg-slate-700"
-              onClick={() => setProbabilidades(calcularProbabilidadeCondicional(historico))}
+              onClick={() =>
+                setProbabilidades(calcularProbabilidadeCondicional(historico))
+              }
             >
               Recalcular
             </button>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <p className="mb-2 text-sm font-semibold text-slate-200">Top 5 para repetir após sair</p>
+              <p className="mb-2 text-sm font-semibold text-slate-200">
+                Top 5 para repetir após sair
+              </p>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-slate-400">
@@ -875,16 +1086,25 @@ export function StrategyLabPage() {
                 </thead>
                 <tbody>
                   {topProbDepoisDeSair.map((item) => (
-                    <tr key={`hit-${item.dezena}`} className="border-t border-slate-800">
-                      <td className="py-1 font-semibold text-white">{item.dezena.toString().padStart(2, '0')}</td>
-                      <td className="py-1">{(item.probDepoisDeSair * 100).toFixed(2)}%</td>
+                    <tr
+                      key={`hit-${item.dezena}`}
+                      className="border-t border-slate-800"
+                    >
+                      <td className="py-1 font-semibold text-white">
+                        {item.dezena.toString().padStart(2, "0")}
+                      </td>
+                      <td className="py-1">
+                        {(item.probDepoisDeSair * 100).toFixed(2)}%
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
             <div>
-              <p className="mb-2 text-sm font-semibold text-slate-200">Top 5 após não sair</p>
+              <p className="mb-2 text-sm font-semibold text-slate-200">
+                Top 5 após não sair
+              </p>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-slate-400">
@@ -894,9 +1114,16 @@ export function StrategyLabPage() {
                 </thead>
                 <tbody>
                   {topProbDepoisDeNaoSair.map((item) => (
-                    <tr key={`miss-${item.dezena}`} className="border-t border-slate-800">
-                      <td className="py-1 font-semibold text-white">{item.dezena.toString().padStart(2, '0')}</td>
-                      <td className="py-1">{(item.probDepoisDeNaoSair * 100).toFixed(2)}%</td>
+                    <tr
+                      key={`miss-${item.dezena}`}
+                      className="border-t border-slate-800"
+                    >
+                      <td className="py-1 font-semibold text-white">
+                        {item.dezena.toString().padStart(2, "0")}
+                      </td>
+                      <td className="py-1">
+                        {(item.probDepoisDeNaoSair * 100).toFixed(2)}%
+                      </td>
                     </tr>
                   ))}
                 </tbody>

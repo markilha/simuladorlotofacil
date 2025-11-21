@@ -2,10 +2,11 @@ import { NavLink, Outlet } from 'react-router-dom';
 
 const links = [
   { to: '/', label: 'Simulador simples' },
-  { to: '/fixos', label: 'Simulador com números fixos' },
-  { to: '/estrategias', label: 'Laboratório de estratégias' },
-  { to: '/resultados', label: 'Resultados / Conferência' },
-  { to: '/config', label: 'Configurações' },
+  { to: '/fixos', label: 'Simulador com numeros fixos' },
+  { to: '/estrategias', label: 'Laboratorio de estrategias' },
+  { to: '/resultados', label: 'Resultados / Conferencia' },
+  { to: '/config', label: 'Configuracoes' },
+  { to: '/ajuda', label: 'Ajuda / Tutorial' },
 ];
 
 export function MainLayout() {

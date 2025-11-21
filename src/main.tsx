@@ -6,6 +6,7 @@ import FixedNumbersSimulatorPage from './pages/FixedNumbersSimulatorPage';
 import ResultsPage from './pages/ResultsPage';
 import ConfigPage from './pages/ConfigPage';
 import StrategyLabPage from './pages/StrategyLabPage';
+import HelpPage from './pages/HelpPage';
 import MainLayout from './layouts/MainLayout';
 import './index.css';
 
@@ -33,6 +34,10 @@ const router = createBrowserRouter([
       {
         path: 'config',
         element: <ConfigPage />,
+      },
+      {
+        path: 'ajuda',
+        element: <HelpPage />,
       },
     ],
   },
