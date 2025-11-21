@@ -3,12 +3,18 @@ import { Link } from 'react-router-dom';
 import NumberGrid from '../components/NumberGrid';
 import BetCardPreview from '../components/BetCardPreview';
 import { saveManyBets } from '../storage/betsStorage';
-import { gerarPdfApostas, gerarPdfHistorico, type HistoricoRegistro } from '../services/pdfService';
+import {
+  gerarPdfApostas,
+  gerarPdfHistorico,
+  type HistoricoRegistro,
+  type PdfApostasOptions,
+} from '../services/pdfService';
 import { combinationCount, generateFixedCombinations } from '../utils/combinacoes';
 import { createId } from '../utils/id';
 import type { Aposta, Dezena } from '../types';
 import { carregarResultadosDaConfiguracao, type ConcursoExcel } from '../utils/resultadosExcel';
 import { contarAcertos, faixaPremiacao } from '../utils/conferencia';
+import { loadPdfSettings, savePdfSettings } from '../storage/pdfSettingsStorage';
 
 const MIN_FIXAS = 5;
 const MAX_FIXAS = 10;
@@ -20,6 +26,12 @@ export function FixedNumbersSimulatorPage() {
   const [nomeSimulacao, setNomeSimulacao] = useState('Simulação com fixos');
   const [jogosGerados, setJogosGerados] = useState<Dezena[][]>([]);
   const [ultimaApostaPdf, setUltimaApostaPdf] = useState<Aposta | null>(null);
+  const [ultimaConfiguracaoPdf, setUltimaConfiguracaoPdf] = useState<PdfApostasOptions | null>(null);
+  const [ajusteMargemEsquerda, setAjusteMargemEsquerda] = useState(0);
+  const [ajusteMargemTopo, setAjusteMargemTopo] = useState(0);
+  const [ajusteEntreCampos, setAjusteEntreCampos] = useState(0);
+  const [ajusteEspacoColunas, setAjusteEspacoColunas] = useState(0);
+  const [ajusteEspacoLinhas, setAjusteEspacoLinhas] = useState(0);
   const [mensagem, setMensagem] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [autoFillQuantidade, setAutoFillQuantidade] = useState(true);
@@ -28,6 +40,15 @@ export function FixedNumbersSimulatorPage() {
   const [historicoLoading, setHistoricoLoading] = useState(false);
   const [historicoErro, setHistoricoErro] = useState<string | null>(null);
   const [statusPlanilha, setStatusPlanilha] = useState('Carregando planilha...');
+
+  useEffect(() => {
+    const savedSettings = loadPdfSettings();
+    setAjusteMargemEsquerda(savedSettings.ajusteMargemEsquerdaMm);
+    setAjusteMargemTopo(savedSettings.ajusteMargemTopoMm);
+    setAjusteEspacoColunas(savedSettings.ajusteEspacoColunasMm);
+    setAjusteEspacoLinhas(savedSettings.ajusteEspacoLinhasMm);
+    setAjusteEntreCampos(savedSettings.ajusteEntreCamposMm);
+  }, []);
 
   const combinacoesGarantia = useMemo(() => {
     if (fixas.length < MIN_FIXAS || fixas.length > MAX_FIXAS) return null;
@@ -74,14 +95,29 @@ export function FixedNumbersSimulatorPage() {
       dataCriacao: new Date().toISOString(),
       dezenasPorJogo,
       jogos: jogosGerados,
-      dezenasFixas: [...fixas].sort((a, b) => a - b),
+    dezenasFixas: [...fixas].sort((a, b) => a - b),
     };
+  };
+
+  const obterConfiguracaoPdf = (): PdfApostasOptions => ({
+    ajusteMargemEsquerdaMm: ajusteMargemEsquerda,
+    ajusteMargemTopoMm: ajusteMargemTopo,
+    ajusteEntreCamposMm: ajusteEntreCampos,
+    ajusteEspacoColunasMm: ajusteEspacoColunas,
+    ajusteEspacoLinhasMm: ajusteEspacoLinhas,
+  });
+
+  const handleSalvarAjustesPadrao = () => {
+    const configuracao = obterConfiguracaoPdf();
+    savePdfSettings(configuracao);
+    setMensagem({ tipo: 'sucesso', texto: 'Medidas salvas como padrão.' });
   };
 
   const handleGenerate = (event?: FormEvent) => {
     event?.preventDefault();
     setMensagem(null);
     setUltimaApostaPdf(null);
+    setUltimaConfiguracaoPdf(null);
 
     if (fixas.length < MIN_FIXAS || fixas.length > MAX_FIXAS) {
       setMensagem({ tipo: 'erro', texto: 'Selecione entre 5 e 10 números fixos.' });
@@ -127,8 +163,10 @@ export function FixedNumbersSimulatorPage() {
   const handleGerarPdf = () => {
     try {
       const aposta = montarApostaAtual();
-      gerarPdfApostas(aposta);
+      const configuracao = obterConfiguracaoPdf();
+      gerarPdfApostas(aposta, configuracao);
       setUltimaApostaPdf(aposta);
+      setUltimaConfiguracaoPdf(configuracao);
       setMensagem({ tipo: 'sucesso', texto: 'PDF gerado com sucesso.' });
     } catch (error) {
       setMensagem({
@@ -143,7 +181,8 @@ export function FixedNumbersSimulatorPage() {
       setMensagem({ tipo: 'erro', texto: 'Gere o PDF antes de fazer o download.' });
       return;
     }
-    gerarPdfApostas(ultimaApostaPdf);
+    const configuracao = ultimaConfiguracaoPdf ?? obterConfiguracaoPdf();
+    gerarPdfApostas(ultimaApostaPdf, configuracao);
     setMensagem({ tipo: 'sucesso', texto: 'Download PDF iniciado.' });
   };
 
@@ -386,15 +425,113 @@ export function FixedNumbersSimulatorPage() {
             </button>
           </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {jogosGerados.map((jogo, index) => (
-            <BetCardPreview
-              key={`${jogo.join('-')}-${index}`}
-              title={`Jogo ${String(index + 1).padStart(2, '0')}`}
-              dezenas={jogo}
-            />
-          ))}
-        </div>
+          <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-sm text-slate-300">
+            <p className="text-sm font-semibold text-white">Impressão no volante oficial</p>
+            <p className="text-xs text-slate-400">
+              Cada cartao reune ate tres jogos no tamanho exato do volante. Posicione o cartao na bandeja da impressora
+              e imprima observando a ordem das paginas.
+            </p>
+            <p className="mt-1 text-xs text-slate-400">
+              Se necessário, fixe o volante oficial em uma folha A4 antes de colocar na impressora e ajuste as margens
+              abaixo até que as marcações coincidam com os quadrados originais.
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <label className="flex flex-col gap-1 text-sm font-semibold text-slate-200">
+                Margem esquerda (mm)
+                <input
+                  type="number"
+                  step="0.5"
+                  inputMode="decimal"
+                  className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                  value={ajusteMargemEsquerda}
+                  onChange={(event) => {
+                    const valor = Number(event.target.value);
+                    setAjusteMargemEsquerda(Number.isFinite(valor) ? valor : 0);
+                  }}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm font-semibold text-slate-200">
+                Margem do topo (mm)
+                <input
+                  type="number"
+                  step="0.5"
+                  inputMode="decimal"
+                  className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                  value={ajusteMargemTopo}
+                  onChange={(event) => {
+                    const valor = Number(event.target.value);
+                    setAjusteMargemTopo(Number.isFinite(valor) ? valor : 0);
+                  }}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm font-semibold text-slate-200">
+                Espaco entre colunas (mm)
+                <input
+                  type="number"
+                  step="0.5"
+                  inputMode="decimal"
+                  className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                  value={ajusteEspacoColunas}
+                  onChange={(event) => {
+                    const valor = Number(event.target.value);
+                    setAjusteEspacoColunas(Number.isFinite(valor) ? valor : 0);
+                  }}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm font-semibold text-slate-200">
+                Espaco entre linhas (mm)
+                <input
+                  type="number"
+                  step="0.5"
+                  inputMode="decimal"
+                  className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                  value={ajusteEspacoLinhas}
+                  onChange={(event) => {
+                    const valor = Number(event.target.value);
+                    setAjusteEspacoLinhas(Number.isFinite(valor) ? valor : 0);
+                  }}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm font-semibold text-slate-200 lg:col-span-3">
+                Espaco entre blocos de jogos (mm)
+                <input
+                  type="number"
+                  step="0.5"
+                  inputMode="decimal"
+                  className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                  value={ajusteEntreCampos}
+                  onChange={(event) => {
+                    const valor = Number(event.target.value);
+                    setAjusteEntreCampos(Number.isFinite(valor) ? valor : 0);
+                  }}
+                />
+              </label>
+            </div>
+            <p className="mt-2 text-xs text-slate-400">
+              Valores positivos aumentam margens e espacos; negativos aproximam, respeitando o limite minimo do volante.
+              Ajuste colunas/linhas para alinhar cada quadradinho e use o espaco entre blocos para centralizar os tres
+              jogos.
+            </p>
+            <div className="flex flex-wrap gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleSalvarAjustesPadrao}
+                className="rounded-lg border border-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/10"
+              >
+                Salvar medidas como padrão
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {jogosGerados.map((jogo, index) => (
+              <BetCardPreview
+                key={`${jogo.join('-')}-${index}`}
+                title={`Jogo ${String(index + 1).padStart(2, '0')}`}
+                dezenas={jogo}
+              />
+            ))}
+          </div>
 
           {historicoRelatorio.length > 0 && (
             <div className="mt-4 space-y-4 text-sm text-slate-200">
