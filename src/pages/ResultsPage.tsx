@@ -185,8 +185,13 @@ export function ResultsPage() {
                   </button>
                 </div>
                 <p className="mt-2 text-xs text-slate-300">
-                  Tipo: {aposta.tipo === 'simples' ? 'Jogo simples' : 'Simulação'} · Jogos: {aposta.jogos.length} ·
-                  Dezenas por jogo: {aposta.dezenasPorJogo}
+                  Tipo:{' '}
+                  {aposta.tipo === 'simples'
+                    ? 'Jogo simples'
+                    : aposta.tipo === 'estrategia'
+                      ? 'Estratégia avançada'
+                      : 'Simulação'}{' '}
+                  · Jogos: {aposta.jogos.length} · Dezenas por jogo: {aposta.dezenasPorJogo}
                 </p>
                 {aposta.dezenasFixas?.length ? (
                   <p className="text-xs text-slate-400">

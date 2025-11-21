@@ -5,6 +5,7 @@ import SimpleSimulatorPage from './pages/SimpleSimulatorPage';
 import FixedNumbersSimulatorPage from './pages/FixedNumbersSimulatorPage';
 import ResultsPage from './pages/ResultsPage';
 import ConfigPage from './pages/ConfigPage';
+import StrategyLabPage from './pages/StrategyLabPage';
 import MainLayout from './layouts/MainLayout';
 import './index.css';
 
@@ -24,6 +25,10 @@ const router = createBrowserRouter([
       {
         path: 'resultados',
         element: <ResultsPage />,
+      },
+      {
+        path: 'estrategias',
+        element: <StrategyLabPage />,
       },
       {
         path: 'config',

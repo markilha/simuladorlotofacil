@@ -6,17 +6,19 @@ interface NumberGridProps {
   selected: Dezena[];
   onToggleNumber: (numero: Dezena) => void;
   maxSelectable?: number;
+  disabledNumbers?: Dezena[];
 }
 
-export function NumberGrid({ selected, onToggleNumber, maxSelectable }: NumberGridProps) {
+export function NumberGrid({ selected, onToggleNumber, maxSelectable, disabledNumbers }: NumberGridProps) {
   const selectedSet = new Set(selected);
+  const disabledSet = new Set(disabledNumbers ?? []);
   const reachedMax = typeof maxSelectable === 'number' && selected.length >= maxSelectable;
 
   return (
     <div className="grid grid-cols-5 gap-2">
       {NUMEROS.map((numero) => {
         const isSelected = selectedSet.has(numero);
-        const disabled = reachedMax && !isSelected;
+        const disabled = disabledSet.has(numero) || (reachedMax && !isSelected);
         return (
           <button
             key={numero}

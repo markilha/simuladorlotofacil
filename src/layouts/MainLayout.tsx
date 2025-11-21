@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 const links = [
   { to: '/', label: 'Simulador simples' },
   { to: '/fixos', label: 'Simulador com números fixos' },
+  { to: '/estrategias', label: 'Laboratório de estratégias' },
   { to: '/resultados', label: 'Resultados / Conferência' },
   { to: '/config', label: 'Configurações' },
 ];
