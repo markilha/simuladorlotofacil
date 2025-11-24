@@ -2,6 +2,13 @@ import type { Dezena } from '../types';
 
 const API_URL = 'https://loteriascaixa-api.herokuapp.com/api/lotofacil/latest';
 
+export interface Premiacao {
+  descricao: string;
+  faixa: number;
+  ganhadores: number;
+  valorPremio: number;
+}
+
 interface LotofacilApiResponse {
   loteria: string;
   concurso: number;
@@ -12,12 +19,7 @@ interface LotofacilApiResponse {
   trevos: any[];
   timeCoracao: string | null;
   mesSorte: string | null;
-  premiacoes: {
-    descricao: string;
-    faixa: number;
-    ganhadores: number;
-    valorPremio: number;
-  }[];
+  premiacoes: Premiacao[];
   estadosPremiados: any[];
   observacao: string;
   acumulou: boolean;
@@ -31,7 +33,7 @@ interface LotofacilApiResponse {
   valorEstimadoProximoConcurso: number;
 }
 
-export async function fetchLatestLotofacilResult(): Promise<{ dezenas: Dezena[]; descricao?: string }> {
+export async function fetchLatestLotofacilResult(): Promise<{ dezenas: Dezena[]; descricao?: string; premiacoes?: Premiacao[] }> {
   try {
     const response = await fetch(API_URL);
     if (!response.ok) {
@@ -54,7 +56,7 @@ export async function fetchLatestLotofacilResult(): Promise<{ dezenas: Dezena[];
 
     const descricao = `Concurso ${data.concurso} - ${data.data}`;
 
-    return { dezenas, descricao };
+    return { dezenas, descricao, premiacoes: data.premiacoes };
   } catch (error) {
     console.error('Erro ao buscar resultado da Lotofácil:', error);
     throw error instanceof Error ? error : new Error('Falha na busca do resultado.');

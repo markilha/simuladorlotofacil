@@ -5,7 +5,7 @@ import NumberGrid from '../components/NumberGrid';
 import { deleteBet, getAllBets } from '../storage/betsStorage';
 import { contarAcertos, faixaPremiacao } from '../utils/conferencia';
 import { carregarResultadosDaConfiguracao } from '../utils/resultadosExcel';
-import { fetchLatestLotofacilResult } from '../services/latestResultService';
+import { fetchLatestLotofacilResult, type Premiacao } from '../services/latestResultService';
 import type { Aposta, BetResultRow, Dezena } from '../types';
 import type { ConcursoExcel } from '../utils/resultadosExcel';
 
@@ -21,6 +21,10 @@ export function ResultsPage() {
   const [concursoSelecionado, setConcursoSelecionado] = useState<number | ''>('');
   const [entradaManual, setEntradaManual] = useState('');
   const [erroPlanilha, setErroPlanilha] = useState<string | null>(null);
+  const [selectedBetId, setSelectedBetId] = useState<string>('');
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const [premiacoesApi, setPremiacoesApi] = useState<Premiacao[] | null>(null);
+  const ITENS_POR_PAGINA = 20;
 
   const carregarPlanilhaConfigurada = () => {
     try {
@@ -76,6 +80,9 @@ export function ResultsPage() {
     deleteBet(id);
     const atualizadas = getAllBets();
     setApostas(atualizadas);
+    if (id === selectedBetId) {
+      setSelectedBetId('');
+    }
     setLinhas((prev) => prev.filter((linha) => !linha.id.startsWith(`${id}-`)));
     setMensagem({ tipo: 'sucesso', texto: 'Aposta removida.' });
   };
@@ -101,7 +108,11 @@ export function ResultsPage() {
 
     const novaLinhas: BetResultRow[] = [];
 
-    apostas.forEach((aposta) => {
+    const apostasParaConferir = selectedBetId
+      ? apostas.filter((a) => a.id === selectedBetId)
+      : apostas;
+
+    apostasParaConferir.forEach((aposta) => {
       aposta.jogos.forEach((jogo, index) => {
         const acertos = contarAcertos(jogo, resultado);
         const faixa = faixaPremiacao(acertos);
@@ -123,8 +134,9 @@ export function ResultsPage() {
   const handleFetchLatestResult = async () => {
     try {
       setMensagem({ tipo: 'sucesso', texto: 'Buscando resultado...' });
-      const { dezenas, descricao } = await fetchLatestLotofacilResult();
+      const { dezenas, descricao, premiacoes } = await fetchLatestLotofacilResult();
       setResultado(dezenas.sort((a, b) => a - b));
+      setPremiacoesApi(premiacoes || null);
       setMensagem({
         tipo: 'sucesso',
         texto: `Resultado aplicado: ${descricao || 'Último concurso'}`,
@@ -145,6 +157,16 @@ export function ResultsPage() {
     return linhas.filter((linha) => linha.faixa === filtro);
   }, [linhas, filtro]);
 
+  useEffect(() => {
+    setPaginaAtual(1);
+  }, [filtro, linhas]);
+
+  const totalPaginas = Math.ceil(linhasFiltradas.length / ITENS_POR_PAGINA);
+  const linhasVisiveis = linhasFiltradas.slice(
+    (paginaAtual - 1) * ITENS_POR_PAGINA,
+    paginaAtual * ITENS_POR_PAGINA
+  );
+
   const estatisticas = useMemo(() => {
     const resumo = {
       '11': 0,
@@ -162,6 +184,36 @@ export function ResultsPage() {
     return resumo;
   }, [linhas]);
 
+  const valorTotalReceber = useMemo(() => {
+    if (!premiacoesApi || linhas.length === 0) return 0;
+
+    let total = 0;
+    linhas.forEach((linha) => {
+      if (!linha.acertos) return;
+      
+      // Mapeamento de acertos para faixa da API
+      // 15 acertos -> faixa 1
+      // 14 acertos -> faixa 2
+      // 13 acertos -> faixa 3
+      // 12 acertos -> faixa 4
+      // 11 acertos -> faixa 5
+      let faixaApi = 0;
+      if (linha.acertos === 15) faixaApi = 1;
+      else if (linha.acertos === 14) faixaApi = 2;
+      else if (linha.acertos === 13) faixaApi = 3;
+      else if (linha.acertos === 12) faixaApi = 4;
+      else if (linha.acertos === 11) faixaApi = 5;
+
+      if (faixaApi > 0) {
+        const premio = premiacoesApi.find((p) => p.faixa === faixaApi);
+        if (premio) {
+          total += premio.valorPremio;
+        }
+      }
+    });
+    return total;
+  }, [linhas, premiacoesApi]);
+
   return (
     <section className="space-y-6">
       <header className="space-y-2">
@@ -173,51 +225,53 @@ export function ResultsPage() {
       </header>
 
       <div className="space-y-3 rounded-2xl bg-slate-900/60 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-lg font-semibold">Apostas salvas ({apostas.length})</h3>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex-1 space-y-1">
+            <span className="text-sm font-semibold text-slate-200">Selecione a aposta para conferir:</span>
+            <select
+              value={selectedBetId}
+              onChange={(e) => setSelectedBetId(e.target.value)}
+              className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+            >
+              <option value="">Todas as apostas salvas ({apostas.length})</option>
+              {apostas.map((aposta) => (
+                <option key={aposta.id} value={aposta.id}>
+                  {aposta.nome} · {new Date(aposta.dataCriacao).toLocaleString('pt-BR')} · Jogos: {aposta.jogos.length}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="button"
-            className="text-sm text-emerald-400 hover:underline"
+            className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-emerald-400 hover:bg-slate-800"
             onClick={() => setApostas(getAllBets())}
           >
             Recarregar
           </button>
+          {selectedBetId && (
+            <button
+              type="button"
+              className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-rose-400 hover:bg-slate-800"
+              onClick={() => handleDeleteBet(selectedBetId)}
+            >
+              Apagar
+            </button>
+          )}
         </div>
-        {apostas.length === 0 ? (
-          <p className="text-sm text-slate-400">Nenhuma aposta salva ainda.</p>
-        ) : (
-          <div className="grid gap-3 md:grid-cols-2">
-            {apostas.map((aposta) => (
-              <div key={aposta.id} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-sm">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-semibold text-white">{aposta.nome}</p>
-                    <p className="text-xs text-slate-400">{new Date(aposta.dataCriacao).toLocaleString('pt-BR')}</p>
-                  </div>
-                  <button
-                    type="button"
-                    className="text-xs font-semibold text-rose-400 hover:underline"
-                    onClick={() => handleDeleteBet(aposta.id)}
-                  >
-                    Apagar
-                  </button>
-                </div>
-                <p className="mt-2 text-xs text-slate-300">
-                  Tipo:{' '}
-                  {aposta.tipo === 'simples'
-                    ? 'Jogo simples'
-                    : aposta.tipo === 'estrategia'
-                      ? 'Estratégia avançada'
-                      : 'Simulação'}{' '}
-                  · Jogos: {aposta.jogos.length} · Dezenas por jogo: {aposta.dezenasPorJogo}
+        {selectedBetId && (
+          <div className="mt-2 text-xs text-slate-400">
+            {(() => {
+              const selected = apostas.find((a) => a.id === selectedBetId);
+              if (!selected) return null;
+              return (
+                <p>
+                  Tipo: {selected.tipo} · Dezenas por jogo: {selected.dezenasPorJogo}
+                  {selected.dezenasFixas?.length
+                    ? ` · Fixas: ${selected.dezenasFixas.map((n) => n.toString().padStart(2, '0')).join(', ')}`
+                    : ''}
                 </p>
-                {aposta.dezenasFixas?.length ? (
-                  <p className="text-xs text-slate-400">
-                    Fixas: {aposta.dezenasFixas.map((n) => n.toString().padStart(2, '0')).join(', ')}
-                  </p>
-                ) : null}
-              </div>
-            ))}
+              );
+            })()}
           </div>
         )}
       </div>
@@ -376,7 +430,44 @@ export function ResultsPage() {
         </div>
       )}
 
-      <BetsTable rows={linhasFiltradas} />
+      {valorTotalReceber > 0 && (
+        <div className="rounded-2xl border border-emerald-500 bg-emerald-900/20 p-4 text-center">
+          <p className="text-sm text-emerald-200">Valor total estimado a receber</p>
+          <p className="text-3xl font-bold text-emerald-400">
+            {valorTotalReceber.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          </p>
+          <p className="text-xs text-emerald-600/70 mt-1">
+            *Cálculo baseado nas premiações do último concurso obtido via API.
+          </p>
+        </div>
+      )}
+
+      {totalPaginas > 1 && (
+        <div className="flex items-center justify-center gap-2 text-sm text-slate-300">
+          <button
+            type="button"
+            disabled={paginaAtual === 1}
+            onClick={() => setPaginaAtual((p) => Math.max(1, p - 1))}
+            className="rounded bg-slate-800 px-3 py-1 hover:bg-slate-700 disabled:opacity-50 disabled:hover:bg-slate-800"
+          >
+            Anterior
+          </button>
+          <span>
+            Página <span className="font-semibold text-white">{paginaAtual}</span> de{' '}
+            <span className="font-semibold text-white">{totalPaginas}</span>
+          </span>
+          <button
+            type="button"
+            disabled={paginaAtual === totalPaginas}
+            onClick={() => setPaginaAtual((p) => Math.min(totalPaginas, p + 1))}
+            className="rounded bg-slate-800 px-3 py-1 hover:bg-slate-700 disabled:opacity-50 disabled:hover:bg-slate-800"
+          >
+            Próxima
+          </button>
+        </div>
+      )}
+
+      <BetsTable rows={linhasVisiveis} />
     </section>
   );
 }

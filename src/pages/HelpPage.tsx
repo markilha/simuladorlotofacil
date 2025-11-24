@@ -44,73 +44,108 @@ function HelpPage() {
         </ol>
       </Section>
 
-      <Section title="Quando usar cada estrategia">
-        <ul className="list-disc space-y-2 pl-5">
-          <li>
-            <span className="font-semibold text-white">Simulador com numeros fixos</span>: escolha de 5 a 10 dezenas
-            preferidas, defina quantas dezenas por jogo (15 a 18) e deixe o sistema sugerir o volume de combinacoes para
-            garantir pelo menos 11 acertos.
-          </li>
-          <li>
-            <span className="font-semibold text-white">Laboratorio de estrategias</span>: oferece modos Fixas, Fechamento,
-            Desdobramento inteligente, Balanceado e Frequencias. Cada modo aceita filtros estatisticos (pares, linhas,
-            colunas, repeticao do ultimo resultado) para reduzir o universo de jogos.
-          </li>
-          <li>
-            <span className="font-semibold text-white">Simulador simples</span>: ideal para montar palpites rapidos de 15 a
-            18 dezenas antes de aplicar tecnicas mais elaboradas.
-          </li>
-        </ul>
+      <Section title="Manual de Estratégias">
+        <div className="space-y-4">
+          <div>
+            <h4 className="font-semibold text-emerald-400">1. Fixas + variáveis inteligentes</h4>
+            <p>
+              Ideal para quem tem números da sorte. Você escolhe um conjunto de dezenas fixas (que estarão em todos os jogos) 
+              e o sistema completa os volantes com as demais dezenas variáveis de forma inteligente, garantindo uma boa 
+              distribuição. Se não escolher variáveis, o sistema usa todas as restantes.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-emerald-400">2. Fechamento garantido</h4>
+            <p>
+              Técnica matemática que visa garantir uma premiação mínima (11, 12, 13, 14 ou 15 pontos) caso as dezenas 
+              sorteadas estejam dentro do seu conjunto de dezenas escolhidas. É uma forma econômica de cobrir um grande 
+              universo de números.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-emerald-400">3. Desdobramento inteligente</h4>
+            <p>
+              Gera combinações a partir de um "universo base" de dezenas (ex: 20 dezenas). O sistema cria jogos tentando 
+              cobrir o máximo de combinações possíveis dentro desse universo, respeitando os filtros estatísticos definidos.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-emerald-400">4. Jogos balanceados</h4>
+            <p>
+              Gera jogos aleatórios, mas estritamente dentro dos padrões estatísticos mais comuns da Lotofácil (ex: 7 a 9 
+              ímpares, soma entre 180 e 220). Ótimo para quem quer fugir de combinações improváveis.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-emerald-400">5. Frequentes × atrasados</h4>
+            <p>
+              Utiliza o histórico oficial para selecionar dezenas. Você define uma proporção (ex: 70% frequentes, 30% 
+              atrasadas) e o sistema monta jogos misturando os números que mais saem com aqueles que estão há mais tempo 
+              sem sair. <strong>Requer planilha carregada.</strong>
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-emerald-400">6. Fechamento do ciclo das dezenas</h4>
+            <p>
+              Foca nas dezenas que ainda não saíram no ciclo atual (um ciclo se fecha quando todas as 25 dezenas foram 
+              sorteadas pelo menos uma vez). Estatisticamente, as dezenas que faltam para fechar o ciclo têm alta 
+              probabilidade de sair nos próximos concursos. <strong>Requer planilha carregada.</strong>
+            </p>
+          </div>
+        </div>
       </Section>
 
-      <Section title="Executando combinacoes passo a passo">
-        <ol className="list-decimal space-y-3 pl-5">
+      <Section title="Executando combinações no Laboratório">
+        <ol className="list-decimal space-y-3 pl-5 text-slate-200">
           <li>
-            Em{' '}
-            <Link to="/fixos" className="font-semibold text-emerald-400 hover:underline">
-              Simulador com numeros fixos
-            </Link>
-            , clique nas dezenas fixas. O contador informa limite minimo e maximo.
-          </li>
-          <li>
-            Ajuste dezenas por jogo e quantidade total. Desligue o preenchimento automatico se quiser digitar um valor manual.
-          </li>
-          <li>
-            Acione <span className="font-semibold text-white">Gerar combinacoes</span>. Revise o painel de jogos e, se
-            estiver tudo ok, use <span className="font-semibold text-white">Salvar simulacao</span>.
-          </li>
-          <li>
-            Para coberturas maiores, abra o{' '}
+            Acesse o{' '}
             <Link to="/estrategias" className="font-semibold text-emerald-400 hover:underline">
-              Laboratorio
-            </Link>{' '}
-            e teste o modo <em>Fechamento garantido</em>: informe dezenas base, escolha a garantia (12, 13 ou 14) e limite a
-            quantidade de jogos que aceita pagar.
+              Laboratório de Estratégias
+            </Link>.
+          </li>
+          <li>
+            Escolha o <strong>Modo de Estratégia</strong> desejado no menu suspenso.
+          </li>
+          <li>
+            Configure os parâmetros específicos (dezenas fixas, variáveis, garantia, etc) e os <strong>Filtros Estatísticos</strong> 
+            (pares, ímpares, soma, moldura) para refinar seus jogos.
+          </li>
+          <li>
+            Clique em <span className="font-semibold text-white">Gerar estratégia</span>. O sistema processará as combinações 
+            e exibirá uma prévia com métricas detalhadas.
+          </li>
+          <li>
+            Se satisfeito, clique em <span className="font-semibold text-white">Salvar estratégia</span> para guardar os 
+            jogos no seu histórico e conferir depois.
           </li>
         </ol>
       </Section>
 
-      <Section title="Gerando instrucoes em PDF">
+      <Section title="Gerando instruções em PDF">
         <p>
-          Os botoes <strong>Gerar PDF</strong> e <strong>Baixar PDF</strong> estao presentes nas telas de Fixos e
-          Estrategias. Eles criam um documento com capa, parametros usados e todas as combinacoes formatadas.
+          Na tela de <strong>Impressão de Volantes</strong>, você pode gerar um PDF com seus jogos salvos.
         </p>
-        <ol className="list-decimal space-y-2 pl-5">
-          <li>Monte ou carregue os jogos desejados.</li>
-          <li>Clique em <strong>Gerar PDF</strong> para preparar o layout.</li>
-          <li>Se alterar qualquer configuracao, gere novamente antes de baixar para garantir conteudo atualizado.</li>
+        <ol className="list-decimal space-y-2 pl-5 text-slate-200">
+          <li>Vá até a página de Impressão.</li>
+          <li>Selecione a aposta ou estratégia salva que deseja imprimir.</li>
+          <li>Ajuste as configurações de margem se necessário.</li>
           <li>
-            Finalize com <strong>Baixar PDF</strong> para salvar o arquivo localmente e compartilhar ou imprimir quando quiser.
+            Clique em <strong>Gerar PDF</strong> para baixar o arquivo formatado para recorte e impressão em papel A4.
           </li>
         </ol>
       </Section>
 
       <Section title="Dicas finais">
-        <ul className="list-disc space-y-2 pl-5">
-          <li>Nomeie cada simulacao ou estrategia para identifica-la rapidamente na aba de resultados.</li>
-          <li>Apague apostas antigas com o botao Apagar na lista de resultados para manter o armazenamento limpo.</li>
-          <li>Atualize a planilha oficial com frequencia para que os filtros de frequencias continuem relevantes.</li>
-          <li>Se o PDF ficar pesado, gere blocos menores de jogos e una os arquivos depois.</li>
+        <ul className="list-disc space-y-2 pl-5 text-slate-200">
+          <li>Nomeie cada simulação ou estratégia para identificá-la rapidamente na aba de resultados.</li>
+          <li>Apague apostas antigas com o botão Apagar na lista de resultados para manter o armazenamento limpo.</li>
+          <li>Atualize a planilha oficial com frequência para que os filtros de frequências e ciclos continuem relevantes.</li>
+          <li>Utilize os filtros estatísticos com moderação para não restringir demais as possibilidades de jogo.</li>
         </ul>
       </Section>
     </div>

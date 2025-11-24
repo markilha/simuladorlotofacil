@@ -21,20 +21,7 @@ const GridIcon = ({ className }: IconProps) => (
   </svg>
 );
 
-const PinIcon = ({ className }: IconProps) => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.6"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={`h-5 w-5 ${className ?? ""}`}
-  >
-    <path d="M12 3c-3 0-5.5 2.5-5.5 5.5 0 4.4 5.5 10.5 5.5 10.5s5.5-6.1 5.5-10.5C17.5 5.5 15 3 12 3z" />
-    <circle cx="12" cy="8.5" r="2.2" />
-  </svg>
-);
+
 
 const FlaskIcon = ({ className }: IconProps) => (
   <svg
@@ -108,12 +95,7 @@ const links = [
     description: "Monte jogos de 15 a 18 dezenas rapidamente.",
     Icon: GridIcon,
   },
-  {
-    to: "/fixos",
-    label: "Simulador com numeros fixos",
-    description: "Escolha dezenas preferidas e gere combinacoes.",
-    Icon: PinIcon,
-  },
+
   {
     to: "/estrategias",
     label: "Laboratorio de estrategias",

@@ -380,10 +380,12 @@ export const criarEstrategiaComFixas = (options: EstrategiaFixasOptions): Strate
     throw new Error('Quantidade de fixas maior que o limite por jogo.');
   }
 
-  let variaveisBase = variaveis ? uniqueSorted(variaveis.filter((numero) => !fixasSet.has(numero))) : [];
+  let variaveisBase = variaveis && variaveis.length > 0
+    ? uniqueSorted(variaveis.filter((numero) => !fixasSet.has(numero)))
+    : ALL_NUMBERS.filter((numero) => !fixasSet.has(numero));
+
   if (variaveisBase.length < complementoNecessario) {
-    const restantes = ALL_NUMBERS.filter((numero) => !fixasSet.has(numero) && !variaveisBase.includes(numero));
-    variaveisBase = [...variaveisBase, ...restantes].slice(0, complementoNecessario);
+    throw new Error('Universo de variaveis insuficiente para completar os jogos.');
   }
 
   if (variaveisBase.length < complementoNecessario) {
@@ -400,7 +402,16 @@ export const criarEstrategiaComFixas = (options: EstrategiaFixasOptions): Strate
     }
 
     const candidato = [...fixasOrdenadas, ...fila.slice(0, complementoNecessario)].sort((a, b) => a - b);
-    fila = [...fila.slice(complementoNecessario), ...fila.slice(0, complementoNecessario)];
+    
+    // Rotaciona a fila para garantir variedade
+    const usados = fila.slice(0, complementoNecessario);
+    const restantes = fila.slice(complementoNecessario);
+    fila = [...restantes, ...usados];
+
+    // A cada 5 jogos, reembaralha para evitar padroes repetitivos se o universo for pequeno
+    if ((jogoIndex + 1) % 5 === 0) {
+      fila = shuffle(fila);
+    }
 
     if (filtros && !passesFilters(candidato, filtros)) {
       fila = shuffle(fila);
