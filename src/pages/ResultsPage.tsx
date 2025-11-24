@@ -5,6 +5,7 @@ import NumberGrid from '../components/NumberGrid';
 import { deleteBet, getAllBets } from '../storage/betsStorage';
 import { contarAcertos, faixaPremiacao } from '../utils/conferencia';
 import { carregarResultadosDaConfiguracao } from '../utils/resultadosExcel';
+import { fetchLatestLotofacilResult } from '../services/latestResultService';
 import type { Aposta, BetResultRow, Dezena } from '../types';
 import type { ConcursoExcel } from '../utils/resultadosExcel';
 
@@ -117,6 +118,23 @@ export function ResultsPage() {
     novaLinhas.sort((a, b) => (b.acertos ?? 0) - (a.acertos ?? 0));
     setLinhas(novaLinhas);
     setMensagem({ tipo: 'sucesso', texto: 'Conferência realizada. Confira os resultados abaixo.' });
+  };
+
+  const handleFetchLatestResult = async () => {
+    try {
+      setMensagem({ tipo: 'sucesso', texto: 'Buscando resultado...' });
+      const { dezenas, descricao } = await fetchLatestLotofacilResult();
+      setResultado(dezenas.sort((a, b) => a - b));
+      setMensagem({
+        tipo: 'sucesso',
+        texto: `Resultado aplicado: ${descricao || 'Último concurso'}`,
+      });
+    } catch (error) {
+      setMensagem({
+        tipo: 'erro',
+        texto: error instanceof Error ? error.message : 'Erro ao buscar resultado.',
+      });
+    }
   };
 
   const linhasFiltradas = useMemo(() => {
@@ -296,6 +314,13 @@ export function ResultsPage() {
             className="rounded-lg bg-emerald-500 px-4 py-2 font-semibold text-slate-950 hover:bg-emerald-600"
           >
             Conferir apostas
+          </button>
+          <button
+            type="button"
+            onClick={handleFetchLatestResult}
+            className="rounded-lg bg-sky-600 px-4 py-2 font-semibold text-white hover:bg-sky-500"
+          >
+            Buscar último resultado
           </button>
           <button
             type="button"
