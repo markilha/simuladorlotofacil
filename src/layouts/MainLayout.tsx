@@ -157,10 +157,9 @@ export function MainLayout() {
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <aside className="hidden flex-shrink-0 flex-col border-r border-slate-800 bg-slate-950 p-6 md:fixed md:inset-y-0 md:flex md:h-screen md:w-72">
         <div className="mb-8">
-          <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
-            Lotofacil
-          </p>
-          <h1 className="mt-2 text-2xl font-bold text-white">Simulador</h1>
+          <img src="/logo.png" alt="Lotofacil Logo" className="mb-4 h-16 w-auto" />
+         
+          <h1 className="mt-2 text-2xl font-bold text-white">SimulaFácil</h1>
           <p className="text-sm text-slate-400">
             Planeje apostas, teste estrategias e acompanhe resultados.
           </p>
