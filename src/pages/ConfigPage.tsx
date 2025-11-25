@@ -88,12 +88,38 @@ export function ConfigPage() {
     }
   };
 
+
   const handleClear = () => {
     clearResultsSheet();
     setMensagem({ tipo: "sucesso", texto: "Planilha removida." });
     setResumo(null);
     refreshInfo();
   };
+
+  const handleLoadLocalFile = async () => {
+    try {
+      setMensagem({ tipo: "sucesso", texto: "Carregando planilha local..." });
+      const response = await fetch('/lotofacil.xlsx');
+      if (!response.ok) {
+        throw new Error('Arquivo lotofacil.xlsx não encontrado no diretório público');
+      }
+      const buffer = await response.arrayBuffer();
+      const concursos = carregarResultadosExcelFromBuffer(buffer);
+      saveResultsSheet(buffer, 'lotofacil.xlsx');
+      setResumo(`${concursos.length} concursos carregados`);
+      setMensagem({ tipo: "sucesso", texto: `Planilha local "lotofacil.xlsx" carregada com sucesso!` });
+      refreshInfo();
+    } catch (error) {
+      setMensagem({
+        tipo: "erro",
+        texto:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível carregar o arquivo local.",
+      });
+    }
+  };
+
 
   return (
     <section className="space-y-6">
@@ -125,6 +151,13 @@ export function ConfigPage() {
             className="rounded-lg bg-slate-700 px-4 py-2 font-semibold text-white hover:bg-slate-600"
           >
             Baixar planilha oficial
+          </button>
+          <button
+            type="button"
+            onClick={handleLoadLocalFile}
+            className="rounded-lg bg-indigo-500 px-4 py-2 font-semibold text-white hover:bg-indigo-600"
+          >
+            Carregar planilha local
           </button>
           <button
             type="button"

@@ -2,10 +2,11 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import SimpleSimulatorPage from "./pages/SimpleSimulatorPage";
-import FixedNumbersSimulatorPage from "./pages/FixedNumbersSimulatorPage";
+
 import ResultsPage from "./pages/ResultsPage";
 import ConfigPage from "./pages/ConfigPage";
 import StrategyLabPage from "./pages/StrategyLabPage";
+import DashboardPage from "./pages/DashboardPage";
 import HelpPage from "./pages/HelpPage";
 import MainLayout from "./layouts/MainLayout";
 import ImpressaoVolantePage from "./pages/ImpressaoVolantePage";
@@ -20,10 +21,7 @@ const router = createBrowserRouter([
         index: true,
         element: <SimpleSimulatorPage />,
       },
-      {
-        path: "fixos",
-        element: <FixedNumbersSimulatorPage />,
-      },
+
       {
         path: "resultados",
         element: <ResultsPage />,
@@ -31,6 +29,10 @@ const router = createBrowserRouter([
       {
         path: "estrategias",
         element: <StrategyLabPage />,
+      },
+      {
+        path: "dashboard",
+        element: <DashboardPage />,
       },
       {
         path: "config",

@@ -88,7 +88,30 @@ const HelpIcon = ({ className }: IconProps) => (
   </svg>
 );
 
+const DashboardIcon = ({ className }: IconProps) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={`h-5 w-5 ${className ?? ""}`}
+  >
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M3 9h18" />
+    <path d="M9 21V9" />
+  </svg>
+);
+
+
 const links = [
+    {
+    to: "/dashboard",
+    label: "Dashboard",
+    description: "Visualize graficos e estatisticas dos resultados.",
+    Icon: DashboardIcon,
+  },
   {
     to: "/",
     label: "Simulador simples",
@@ -102,6 +125,7 @@ const links = [
     description: "Aplique filtros avancados e crie estrategias.",
     Icon: FlaskIcon,
   },
+
   {
     to: "/resultados",
     label: "Resultados / Conferencia",
