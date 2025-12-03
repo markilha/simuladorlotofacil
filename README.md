@@ -22,18 +22,20 @@ npm run lint         # roda o ESLint
 ### 1. Configurar a planilha oficial
 
 1. Baixe o arquivo atualizado `lotofacil.xlsx` no site da Caixa (atalho disponível na aba **Configurações**).
-2. Clique em **Carregar planilha baixada** e selecione o arquivo. O simulador extrai todos os concursos e armazena o conteúdo no `localStorage`.  
+2. Clique em **Carregar planilha baixada** e selecione o arquivo. O simulador extrai todos os concursos e armazena o conteúdo no `localStorage`.
    - As abas **Simulador com fixos**, **Laboratório de Estratégias** e **Resultados** dependem dessa planilha para liberar os recursos de histórico.
 3. Sempre que quiser atualizar os dados, repita o processo ou clique em **Remover planilha** para limpar o cache.
 
 ### 2. Criar apostas
 
 #### Simulador simples
+
 - Selecione de 15 a 18 dezenas no grid principal.
 - Use **Limpar seleção** para reiniciar a escolha.
 - Clique em **Salvar jogo simples** para armazenar a aposta. Cada jogo fica salvo localmente (pode ser conferido depois em **Resultados**).
 
 #### Simulador com números fixos
+
 - Escolha de 5 a 10 dezenas fixas. O app sugere automaticamente a quantidade mínima de jogos para garantir 11 pontos usando as demais dezenas.
 - Defina:
   - Quantidade de dezenas por jogo (15 a 18)
@@ -45,6 +47,7 @@ npm run lint         # roda o ESLint
   - **Analisar histórico** compara os jogos gerados com todos os concursos carregados na planilha, exibindo faixas de premiação e destaques.
 
 #### Laboratório de Estratégias
+
 - Escolha um modo:
   - **Fixas + variáveis**: define dezenas obrigatórias e variáveis para construir os jogos.
   - **Fechamento garantido**: cria combinações com garantia de 12/13/14 pontos dentro de um limite máximo de jogos.
@@ -85,3 +88,34 @@ npm run lint         # roda o ESLint
 
 - Adicione testes automatizados para as regras de geração em `src/services/strategyEngine`.
 - Integre autenticação ou sincronização em nuvem caso precise compartilhar apostas entre dispositivos.
+
+---
+
+## 🆕 Sistema de Overlay Transparente para Volante
+
+Novo recurso que permite gerar arquivos PDF ou PNG **transparentes** contendo apenas as marcações "X" posicionadas com precisão milimétrica sobre o volante oficial da Lotofácil.
+
+### ⚡ Início Rápido
+
+1. Vá em **"Impressão de Volante"**
+2. Clique em **"Modo Overlay Transparente"**
+3. Selecione os quadros (1, 2 ou 3)
+4. Clique em **"Gerar Overlay Transparente"**
+5. Imprima o arquivo sobre o volante oficial
+
+### 📚 Documentação Completa
+
+- **[Guia Rápido de Uso](./GUIA_RAPIDO_OVERLAY.md)** - Tutorial passo a passo para usuários
+- **[Documentação Completa](./OVERLAY_VOLANTE.md)** - Guia detalhado com calibração, dicas e solução de problemas
+- **[Documentação Técnica](./DOCUMENTACAO_TECNICA_OVERLAY.md)** - Arquitetura, algoritmos e implementação
+
+### ✨ Características
+
+- ✅ **Alinhamento perfeito** com o volante oficial
+- ✅ **Calibração ajustável** para diferentes impressoras
+- ✅ **Exportação PDF (vetorial)** ou PNG (imagem)
+- ✅ **Escolha de quadros** individuais (1, 2 ou 3)
+- ✅ **Personalização** de cor, espessura e tamanho das marcações
+- ✅ **100% aceito** nas lotéricas (não redesenha o volante)
+
+---
