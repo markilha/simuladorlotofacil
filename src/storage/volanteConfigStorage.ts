@@ -88,6 +88,14 @@ export function loadVolanteConfig(): VolanteConfig {
         parsed.offsetGridYMm,
         DEFAULT_VOLANTE_CONFIG.offsetGridYMm
       ),
+      offsetQuantidadeXMm: sanitizeNumber(
+        parsed.offsetQuantidadeXMm,
+        DEFAULT_VOLANTE_CONFIG.offsetQuantidadeXMm
+      ),
+      offsetQuantidadeYMm: sanitizeNumber(
+        parsed.offsetQuantidadeYMm,
+        DEFAULT_VOLANTE_CONFIG.offsetQuantidadeYMm
+      ),
     };
   } catch {
     return DEFAULT_VOLANTE_CONFIG;

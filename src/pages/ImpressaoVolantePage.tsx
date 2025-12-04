@@ -461,6 +461,38 @@ export default function ImpressaoVolantePage() {
                   }
                 />
               </label>
+
+              <label className="flex flex-col gap-1 text-sm font-semibold text-slate-200">
+                Posição X quantidade (mm)
+                <input
+                  type="number"
+                  step="0.5"
+                  className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                  value={volanteConfig.offsetQuantidadeXMm}
+                  onChange={(e) =>
+                    handleVolanteConfigChange(
+                      "offsetQuantidadeXMm",
+                      Number(e.target.value)
+                    )
+                  }
+                />
+              </label>
+
+              <label className="flex flex-col gap-1 text-sm font-semibold text-slate-200">
+                Posição Y quantidade (mm)
+                <input
+                  type="number"
+                  step="0.5"
+                  className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-white focus:border-emerald-500 focus:outline-none"
+                  value={volanteConfig.offsetQuantidadeYMm}
+                  onChange={(e) =>
+                    handleVolanteConfigChange(
+                      "offsetQuantidadeYMm",
+                      Number(e.target.value)
+                    )
+                  }
+                />
+              </label>
             </div>
 
             <div className="flex flex-wrap gap-3 mt-4">
@@ -483,13 +515,22 @@ export default function ImpressaoVolantePage() {
 
           {/* Botão gerar overlay */}
           <div className="rounded-2xl bg-slate-900/70 p-4 shadow">
-            <button
-              className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-6 py-3 rounded-lg shadow w-full sm:w-auto"
-              onClick={handleGerarOverlay}
-              disabled={quadrosSelecionados.length === 0}
-            >
-              Gerar Overlay Transparente
-            </button>
+            <div className="flex gap-3 flex-wrap">
+              <button
+                className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-6 py-3 rounded-lg shadow flex-1 min-w-[200px]"
+                onClick={handleGerarOverlay}
+                disabled={quadrosSelecionados.length === 0}
+              >
+                Gerar Overlay Transparente
+              </button>
+              <button
+                className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg shadow flex-1 min-w-[200px]"
+                onClick={handleGerarOverlay}
+                disabled={quadrosSelecionados.length === 0}
+              >
+                🖨️ Imprimir Direto
+              </button>
+            </div>
             {quadrosSelecionados.length === 0 && (
               <p className="text-sm text-amber-400 mt-2">
                 Selecione pelo menos um quadro para gerar o overlay.

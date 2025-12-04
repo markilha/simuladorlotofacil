@@ -65,12 +65,16 @@ export interface VolanteConfig {
   // Posição inicial da grade no quadro
   offsetGridXMm: number;
   offsetGridYMm: number;
+
+  // Posição da marcação de quantidade de números
+  offsetQuantidadeXMm: number;
+  offsetQuantidadeYMm: number;
 }
 
 /**
  * Configuração padrão baseada na imagem do volante
  * Medições calibradas para o volante oficial
- * O volante oficial mede 8cm x 19cm (80mm x 190mm)
+ * Tamanho do papel: Envelope (4.125 x 9.5 in) = 104.775mm x 241.3mm
  */
 export const DEFAULT_VOLANTE_CONFIG: VolanteConfig = {
   larguraPapelMm: 80, // Largura padrão do cartão
@@ -98,6 +102,9 @@ export const DEFAULT_VOLANTE_CONFIG: VolanteConfig = {
 
   offsetGridXMm: 0,
   offsetGridYMm: 0,
+
+  offsetQuantidadeXMm: 0, // Posição X inicial da marcação de quantidade
+  offsetQuantidadeYMm: 20, // Offset Y da marcação (negativo = acima do final do quadro)
 };
 
 /**
@@ -229,17 +236,56 @@ export function gerarOverlayVolante(
   // Exportar como PDF único
   const timestamp = Date.now();
   const filename = `overlay-volante-${numeroDeCartoes}cartoes-${timestamp}.pdf`;
-  abrirOuBaixar(doc, filename);
+  abrirOuImprimir(doc, filename);
 }
 
 /**
- * Abre PDF em nova aba ou faz download
+ * Abre PDF em nova aba com diálogo de impressão ou faz download
  */
-function abrirOuBaixar(doc: jsPDF, filename: string): void {
+function abrirOuImprimir(doc: jsPDF, filename: string): void {
   if (typeof window !== "undefined") {
-    const blobUrl = doc.output("bloburl");
-    const opened = window.open(blobUrl, "_blank");
-    if (!opened) {
+    // Criar HTML com o PDF embedado e configurações de impressão
+    const pdfData = doc.output("datauristring");
+
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Overlay Volante - Impressão</title>
+          <style>
+            @page {
+              size: 104.775mm 241.3mm;
+              margin: 0;
+            }
+            * {
+              margin: 0;
+              padding: 0;
+            }
+            body {
+              margin: 0;
+              padding: 0;
+            }
+            embed {
+              width: 100%;
+              height: 100vh;
+            }
+          </style>
+        </head>
+        <body>
+          <embed src="${pdfData}" type="application/pdf" width="100%" height="100%">
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+
+      // Aguardar carregamento e abrir diálogo de impressão
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    } else {
+      // Se popup bloqueado, fazer download
       doc.save(filename);
     }
   } else {
